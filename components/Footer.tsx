@@ -4,9 +4,10 @@ import { Translations } from '../types';
 
 interface FooterProps {
   lang: 'en' | 'ko';
+  onLinkClick: (view: string) => void;
 }
 
-const Footer: React.FC<FooterProps> = ({ lang }) => {
+const Footer: React.FC<FooterProps> = ({ lang, onLinkClick }) => {
   const t = translations[lang];
 
   return (
@@ -22,7 +23,7 @@ const Footer: React.FC<FooterProps> = ({ lang }) => {
           <div>
             <h4 className="text-white font-medium mb-4">Community</h4>
             <ul className="space-y-2 text-sm text-slate-400">
-               <li><a href="#" className="hover:text-white">Safety Guidelines</a></li>
+               <li><button onClick={() => onLinkClick('safety')} className="hover:text-white text-left">Safety Guidelines</button></li>
                <li><a href="#" className="hover:text-white">Safer Exchange Sites (VIC Police)</a></li>
                <li><a href="#" className="hover:text-white">User Reviews</a></li>
             </ul>
@@ -30,9 +31,9 @@ const Footer: React.FC<FooterProps> = ({ lang }) => {
           <div>
              <h4 className="text-white font-medium mb-4">Legal</h4>
              <ul className="space-y-2 text-sm text-slate-400">
-               <li><a href="#" className="hover:text-white">{t.legal}</a></li>
-               <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
-               <li><a href="#" className="hover:text-white">Damage & Returns</a></li>
+               <li><button onClick={() => onLinkClick('legal')} className="hover:text-white text-left">{t.legal}</button></li>
+               <li><button onClick={() => onLinkClick('legal')} className="hover:text-white text-left">Privacy Policy</button></li>
+               <li><button onClick={() => onLinkClick('safety')} className="hover:text-white text-left">Damage & Returns</button></li>
              </ul>
           </div>
         </div>

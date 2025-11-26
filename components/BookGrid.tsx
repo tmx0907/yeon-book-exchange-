@@ -1,19 +1,31 @@
 import React, { useState } from 'react';
-import { Book, State, Translations } from '../types';
-import { translations, mockBooks } from '../data';
-import { MapPin, ArrowRight } from 'lucide-react';
+import { State, Book } from '../types';
+import { translations } from '../data';
+import { MapPin, MessageCircle, ArrowRightLeft, Plus } from 'lucide-react';
 
 interface BookGridProps {
   lang: 'en' | 'ko';
+  books: Book[];
+  onMessageClick: (book: Book) => void;
+  onExchangeClick: (book: Book) => void;
+  isMyLibrary?: boolean;
+  onAddBook?: () => void;
 }
 
-const BookGrid: React.FC<BookGridProps> = ({ lang }) => {
+const BookGrid: React.FC<BookGridProps> = ({ 
+  lang, 
+  books, 
+  onMessageClick, 
+  onExchangeClick, 
+  isMyLibrary = false, 
+  onAddBook 
+}) => {
   const [selectedState, setSelectedState] = useState<State | 'All'>('All');
   const [searchTerm, setSearchTerm] = useState('');
   const t = translations[lang];
 
-  const filteredBooks = mockBooks.filter((book) => {
-    const matchesState = selectedState === 'All' || book.location.state === selectedState;
+  const filteredBooks = books.filter((book) => {
+    const matchesState = isMyLibrary ? true : (selectedState === 'All' || book.location.state === selectedState);
     const matchesSearch =
       book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       book.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -38,30 +50,43 @@ const BookGrid: React.FC<BookGridProps> = ({ lang }) => {
         </div>
         
         <div className="flex items-center space-x-4">
-          <span className="text-sm font-medium text-slate-400 whitespace-nowrap">{t.filterByState}</span>
-          <div className="relative">
-            <select
-              value={selectedState}
-              onChange={(e) => setSelectedState(e.target.value as State | 'All')}
-              className="appearance-none bg-slate-50 border-none rounded-full py-2 pl-4 pr-10 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-sky-200 cursor-pointer hover:bg-slate-100 transition-colors"
+          {!isMyLibrary && (
+            <>
+              <span className="text-sm font-medium text-slate-400 whitespace-nowrap">{t.filterByState}</span>
+              <div className="relative">
+                <select
+                  value={selectedState}
+                  onChange={(e) => setSelectedState(e.target.value as State | 'All')}
+                  className="appearance-none bg-slate-50 border-none rounded-full py-2 pl-4 pr-10 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-sky-200 cursor-pointer hover:bg-slate-100 transition-colors"
+                >
+                  <option value="All">{t.allStates}</option>
+                  <option value="NSW">NSW</option>
+                  <option value="VIC">VIC</option>
+                  <option value="QLD">QLD</option>
+                  <option value="WA">WA</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                </div>
+              </div>
+            </>
+          )}
+          {isMyLibrary && onAddBook && (
+            <button 
+              onClick={onAddBook}
+              className="flex items-center px-5 py-2 bg-slate-900 text-white rounded-full hover:bg-sky-600 transition-colors text-sm font-semibold shadow-md"
             >
-              <option value="All">{t.allStates}</option>
-              <option value="NSW">NSW</option>
-              <option value="VIC">VIC</option>
-              <option value="QLD">QLD</option>
-              <option value="WA">WA</option>
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-            </div>
-          </div>
+              <Plus className="w-4 h-4 mr-2" />
+              {t.uploadBook}
+            </button>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
         {filteredBooks.map((book) => (
           <div key={book.id} className="group cursor-pointer">
-            <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-slate-100 mb-6">
+            <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-slate-100 mb-6 shadow-sm border border-slate-100">
                <img 
                  src={book.imageUrl} 
                  alt={book.title} 
@@ -70,16 +95,29 @@ const BookGrid: React.FC<BookGridProps> = ({ lang }) => {
                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300"></div>
                
                <div className="absolute top-4 left-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md ${book.condition === 'New' ? 'bg-white/80 text-emerald-700' : 'bg-white/80 text-amber-700'}`}>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md ${book.condition === 'New' ? 'bg-white/90 text-emerald-700' : 'bg-white/90 text-amber-700'}`}>
                     {book.condition}
                   </span>
                </div>
+               
+               {/* Hover Overlay Action */}
+               {!isMyLibrary && (
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                     <button 
+                       onClick={(e) => { e.stopPropagation(); onExchangeClick(book); }}
+                       className="bg-white/95 text-slate-900 px-6 py-3 rounded-full font-semibold shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-all flex items-center gap-2"
+                     >
+                       <ArrowRightLeft className="w-4 h-4" />
+                       {t.requestExchange}
+                     </button>
+                  </div>
+               )}
             </div>
             
             <div>
               <div className="flex justify-between items-start mb-1">
-                 <h3 className="font-serif text-xl text-slate-900 group-hover:text-sky-600 transition-colors">{book.title}</h3>
-                 <span className="text-sky-600 font-bold text-sm">{book.points} {t.points}</span>
+                 <h3 className="font-serif text-xl text-slate-900 group-hover:text-sky-600 transition-colors truncate pr-2">{book.title}</h3>
+                 {!isMyLibrary && <span className="text-sky-600 font-bold text-sm shrink-0">{book.points} {t.points}</span>}
               </div>
               <p className="text-sm text-slate-500 font-medium mb-3">{book.author}</p>
               
@@ -88,9 +126,15 @@ const BookGrid: React.FC<BookGridProps> = ({ lang }) => {
                     <MapPin className="w-3 h-3 mr-1" />
                     <span className="truncate max-w-[100px]">{book.location.suburb}, {book.location.state}</span>
                  </div>
-                 <button className="text-slate-900 hover:text-sky-600 transition-colors">
-                    <ArrowRight className="w-5 h-5" />
-                 </button>
+                 {!isMyLibrary && (
+                   <button 
+                    onClick={(e) => { e.stopPropagation(); onMessageClick(book); }}
+                    className="flex items-center text-slate-400 hover:text-sky-600 transition-colors text-xs font-semibold uppercase tracking-wide"
+                   >
+                      <span className="mr-1">{t.contactOwner}</span>
+                      <MessageCircle className="w-4 h-4" />
+                   </button>
+                 )}
               </div>
             </div>
           </div>
@@ -99,8 +143,10 @@ const BookGrid: React.FC<BookGridProps> = ({ lang }) => {
       
       {filteredBooks.length === 0 && (
           <div className="text-center py-24 bg-slate-50 rounded-3xl">
-              <p className="text-slate-400 font-serif text-xl">No stories found in this region.</p>
-              <button onClick={() => setSelectedState('All')} className="mt-4 text-sky-600 hover:text-sky-700 font-medium">View all regions</button>
+              <p className="text-slate-400 font-serif text-xl">
+                 {isMyLibrary ? "Your library is empty. Start adding books to exchange!" : "No stories found in this region."}
+              </p>
+              {!isMyLibrary && <button onClick={() => setSelectedState('All')} className="mt-4 text-sky-600 hover:text-sky-700 font-medium">View all regions</button>}
           </div>
       )}
     </div>

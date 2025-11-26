@@ -1,4 +1,5 @@
-import { Book, Translations } from './types';
+
+import { Book, Chat, Translations, User, ExchangeTransaction, Discussion } from './types';
 
 export const translations: Translations = {
   en: {
@@ -23,6 +24,7 @@ export const translations: Translations = {
     legal: "Terms of Harmony",
     statsTitle: "Community Flow",
     login: "Sign In",
+    logout: "Sign Out",
     welcome: "Welcome",
     newArrivals: "Discover Stories",
     howItWorks: "The Journey",
@@ -33,7 +35,75 @@ export const translations: Translations = {
     step3Title: "Connect",
     step3Desc: "Meet safely and share the joy.",
     damagePolicy: "Restoration Policy",
-    damageDesc: "Guidelines for respect and care of shared books."
+    damageDesc: "Guidelines for respect and care of shared books.",
+    messages: "Messages",
+    typeMessage: "Type your message...",
+    send: "Send",
+    contactOwner: "Message",
+    requestExchange: "Request Swap",
+    activeNow: "Active Now",
+    noMessages: "No messages yet. Start the conversation.",
+    email: "Email Address",
+    password: "Password",
+    name: "Full Name",
+    welcomeBack: "Welcome Back",
+    welcomeBackDesc: "Continue your journey of reading and connection.",
+    joinUs: "Join the Flow",
+    joinUsDesc: "Become part of the story today.",
+    dontHaveAccount: "Don't have an account?",
+    alreadyHaveAccount: "Already a member?",
+    signUp: "Sign Up",
+    signIn: "Sign In",
+    myLibrary: "My Library",
+    uploadBook: "Upload Book",
+    uploadDesc: "Pass on the stories that moved you.",
+    bookTitle: "Book Title",
+    author: "Author",
+    selectCondition: "Select Condition",
+    selectCategory: "Select Category",
+    uploadButton: "Add to Collection",
+    proposalSent: "Exchange Proposal Sent",
+    proposalTitle: "Exchange Proposed",
+    proposalDesc: "offered in exchange for",
+    accept: "Accept",
+    decline: "Decline",
+    accepted: "Proposal Accepted",
+    rejected: "Proposal Declined",
+    selectBookToOffer: "Select a book to offer",
+    selectBookDesc: "Which of your books would you like to trade for",
+    noBooksInLibrary: "Your library is empty. Upload a book to start exchanging.",
+    uploadFirst: "Upload Now",
+    cancel: "Cancel",
+    confirmProposal: "Send Proposal",
+    yourBook: "Your Book",
+    profile: "Profile",
+    editProfile: "Edit Profile",
+    memberSince: "Member since",
+    exchangesCompleted: "Exchanges",
+    communityRating: "Rating",
+    exchangeHistory: "Exchange History",
+    historyEmpty: "No past exchanges found.",
+    tradedWith: "Traded with",
+    gave: "Gave",
+    received: "Received",
+    completed: "Completed",
+    cancelled: "Cancelled",
+    pending: "Pending",
+    saveChanges: "Save Changes",
+    favoriteQuote: "Favorite Quote",
+    quotePlaceholder: "Share a line that resonates with you...",
+    discussions: "Discussions",
+    activeDiscussions: "Participating Rooms",
+    noDiscussions: "You haven't joined any discussions yet.",
+    participants: "Participants",
+    
+    // Legal & Policy Text
+    termsTitle: "Terms of Harmony",
+    termsContent: "Yeon is a neutral venue designed to facilitate the exchange of books between individuals. We do not own, sell, or inspect the books listed. Users are solely responsible for their interactions, the quality of books exchanged, and their personal safety. By using Yeon, you agree to communicate respectfully and honour your exchange commitments.",
+    privacyTitle: "Privacy Policy",
+    privacyContent: "We value your privacy and comply with the Australian Privacy Principles. We collect only the minimum information required to facilitate exchanges (name, rough location, and reading preferences). Your precise location is never shared publicly. We do not sell your data to third parties.",
+    damageTitle: "Damage & Restitution",
+    damageContent: "We follow a standard similar to university libraries. If a book is damaged beyond normal wear and tear (e.g., water damage, tearing, extensive marking), the borrower is expected to replace it with a copy of the same ISBN or a newer edition. If replacement is not possible, a standard compensation fee (approx. AU $125 or current market value) is recommended. Honesty is paramount; please report accidental damage immediately."
   },
   ko: {
     appTitle: "연 (Yeon).",
@@ -57,6 +127,7 @@ export const translations: Translations = {
     legal: "이용 약관",
     statsTitle: "지역별 분포",
     login: "로그인",
+    logout: "로그아웃",
     welcome: "환영합니다",
     newArrivals: "새로운 이야기",
     howItWorks: "여정",
@@ -67,9 +138,134 @@ export const translations: Translations = {
     step3Title: "이음",
     step3Desc: "안전하게 만나 책과 마음을 나눕니다.",
     damagePolicy: "배려와 보상",
-    damageDesc: "책을 소중히 다루는 법과 보상 기준."
+    damageDesc: "책을 소중히 다루는 법과 보상 기준.",
+    messages: "메시지",
+    typeMessage: "메시지를 입력하세요...",
+    send: "전송",
+    contactOwner: "대화하기",
+    requestExchange: "교환 요청",
+    activeNow: "활동 중",
+    noMessages: "메시지가 없습니다. 대화를 시작해보세요.",
+    email: "이메일 주소",
+    password: "비밀번호",
+    name: "이름",
+    welcomeBack: "다시 오셨군요",
+    welcomeBackDesc: "독서와 만남의 여정을 계속하세요.",
+    joinUs: "함께하기",
+    joinUsDesc: "지금 새로운 이야기의 주인공이 되세요.",
+    dontHaveAccount: "계정이 없으신가요?",
+    alreadyHaveAccount: "이미 계정이 있으신가요?",
+    signUp: "가입하기",
+    signIn: "로그인",
+    myLibrary: "내 서재",
+    uploadBook: "책 등록하기",
+    uploadDesc: "당신을 감동시킨 이야기를 나누어주세요.",
+    bookTitle: "책 제목",
+    author: "작가",
+    selectCondition: "상태 선택",
+    selectCategory: "카테고리 선택",
+    uploadButton: "서재에 담기",
+    proposalSent: "교환 제안이 전송되었습니다",
+    proposalTitle: "교환 제안",
+    proposalDesc: "을(를) 다음 책과 교환하고 싶어합니다:",
+    accept: "수락",
+    decline: "거절",
+    accepted: "제안 수락됨",
+    rejected: "제안 거절됨",
+    selectBookToOffer: "교환할 책 선택",
+    selectBookDesc: "상대방의 책과 교환하기 위해 내 서재에서 책을 골라주세요:",
+    noBooksInLibrary: "서재가 비어있습니다. 교환을 위해 먼저 책을 등록해주세요.",
+    uploadFirst: "책 등록하러 가기",
+    cancel: "취소",
+    confirmProposal: "제안 보내기",
+    yourBook: "나의 책",
+    profile: "프로필",
+    editProfile: "프로필 수정",
+    memberSince: "가입일",
+    exchangesCompleted: "거래 완료",
+    communityRating: "매너 온도",
+    exchangeHistory: "교환 내역",
+    historyEmpty: "지난 교환 내역이 없습니다.",
+    tradedWith: "교환 파트너",
+    gave: "보낸 책",
+    received: "받은 책",
+    completed: "완료됨",
+    cancelled: "취소됨",
+    pending: "대기중",
+    saveChanges: "저장하기",
+    favoriteQuote: "인생의 문장",
+    quotePlaceholder: "마음에 울림을 준 문장을 공유해주세요...",
+    discussions: "참여 중인 토론",
+    activeDiscussions: "토론방",
+    noDiscussions: "참여 중인 토론이 없습니다.",
+    participants: "참여",
+
+    // Legal & Policy Text (Korean)
+    termsTitle: "이용 약관 (Terms of Harmony)",
+    termsContent: "연(Yeon)은 개인 간의 책 교환을 돕기 위한 중립적인 플랫폼입니다. 저희는 등록된 책을 소유하거나 판매하지 않으며, 책의 상태를 직접 검수하지 않습니다. 모든 교환 과정, 책의 품질 확인, 그리고 개인의 안전에 대한 책임은 사용자 본인에게 있습니다. 서비스를 이용함으로써 귀하는 상대방을 존중하고 약속을 성실히 이행할 것에 동의합니다.",
+    privacyTitle: "개인정보 처리방침",
+    privacyContent: "저희는 호주 개인정보 보호 원칙(Australian Privacy Principles)을 준수합니다. 교환 매칭을 위해 필요한 최소한의 정보(이름, 대략적인 위치, 독서 취향)만을 수집합니다. 귀하의 정확한 상세 주소는 공개되지 않으며, 수집된 데이터는 제3자에게 판매되지 않습니다.",
+    damageTitle: "손상 및 보상 규정",
+    damageContent: "도서관 반납 규정과 유사한 기준을 적용합니다. 통상적인 마모를 넘어선 손상(물 젖음, 찢어짐, 과도한 낙서 등)이 발생한 경우, 빌린 사람은 동일한 ISBN의 새 책이나 최신 판본으로 변상해야 합니다. 책을 구하기 어려운 경우, 시장 가격에 상응하는 금액(약 AU $125 또는 협의된 금액)으로 보상하는 것을 원칙으로 합니다. 실수는 누구나 할 수 있습니다. 손상 발생 시 즉시 상대방에게 알리고 사과하는 것이 가장 중요합니다."
   }
 };
+
+export const currentUser: User = {
+  id: 'me',
+  name: 'Ji-Min Han',
+  email: 'jimin.han@example.com',
+  state: 'NSW',
+  suburb: 'Strathfield',
+  points: 125,
+  booksRead: 14,
+  exchangesCompleted: 8,
+  rating: 4.8,
+  joinDate: 'September 2024',
+  avatarUrl: 'https://i.pravatar.cc/150?u=me',
+  favoriteQuote: "We read to know we are not alone. – C.S. Lewis"
+};
+
+export const mockExchanges: ExchangeTransaction[] = [
+  {
+    id: 't1',
+    bookGivenTitle: 'The Vegetarian',
+    bookGivenImage: 'https://picsum.photos/seed/book4/100/150',
+    bookReceivedTitle: 'Almond',
+    bookReceivedImage: 'https://picsum.photos/seed/book6/100/150',
+    partnerName: 'Daniel Park',
+    date: 'Oct 12, 2024',
+    status: 'Completed'
+  },
+  {
+    id: 't2',
+    bookGivenTitle: 'Trend Korea 2024',
+    bookGivenImage: 'https://picsum.photos/seed/book99/100/150',
+    bookReceivedTitle: 'Pachinko',
+    bookReceivedImage: 'https://picsum.photos/seed/book3/100/150',
+    partnerName: 'Park Su-jin',
+    date: 'Sep 28, 2024',
+    status: 'Completed'
+  }
+];
+
+export const mockDiscussions: Discussion[] = [
+  {
+    id: 'd1',
+    bookTitle: 'Pachinko',
+    topic: 'Identiy across generations',
+    participantsCount: 15,
+    lastActive: '2 hours ago',
+    imageUrl: 'https://picsum.photos/seed/book3/100/150',
+  },
+  {
+    id: 'd2',
+    bookTitle: 'Vegetarian',
+    topic: 'Symbolism of refusal',
+    participantsCount: 8,
+    lastActive: 'Yesterday',
+    imageUrl: 'https://picsum.photos/seed/book4/100/150',
+  }
+];
 
 export const mockBooks: Book[] = [
   {
@@ -184,4 +380,47 @@ export const regionData = [
   { name: 'VIC', value: 15 },
   { name: 'WA', value: 6 },
   { name: 'Other', value: 8 },
+];
+
+export const mockChats: Chat[] = [
+  {
+    id: 'c1',
+    partnerId: 'u2',
+    partnerName: 'Lee Jun-ho',
+    partnerAvatar: 'https://i.pravatar.cc/150?u=u2',
+    lastMessage: 'Is the book still available?',
+    lastMessageTime: '10:30 AM',
+    unread: 1,
+    messages: [
+      { id: 'm1', senderId: 'me', text: 'Hi, I saw your copy of "Inconvenient Store".', timestamp: '10:00 AM', isMe: true },
+      { id: 'm2', senderId: 'u2', text: 'Hello! Yes, it is.', timestamp: '10:05 AM', isMe: false },
+      { id: 'm3', senderId: 'me', text: 'Great, I live in Eastwood too.', timestamp: '10:15 AM', isMe: true },
+      { id: 'm4', senderId: 'u2', text: 'Oh really? We could meet at the library.', timestamp: '10:30 AM', isMe: false },
+    ]
+  },
+  {
+    id: 'c2',
+    partnerId: 'u3',
+    partnerName: 'Park Su-jin',
+    partnerAvatar: 'https://i.pravatar.cc/150?u=u3',
+    lastMessage: 'Thanks for the exchange!',
+    lastMessageTime: 'Yesterday',
+    unread: 0,
+    messages: [
+      { id: 'm1', senderId: 'u3', text: 'I really enjoyed reading Pachinko.', timestamp: 'Yesterday', isMe: false },
+      { id: 'm2', senderId: 'me', text: 'I am glad you liked it!', timestamp: 'Yesterday', isMe: true },
+    ]
+  },
+  {
+    id: 'c3',
+    partnerId: 'u7',
+    partnerName: 'Sarah Lee',
+    partnerAvatar: 'https://i.pravatar.cc/150?u=u7',
+    lastMessage: 'When are you free?',
+    lastMessageTime: 'Mon',
+    unread: 0,
+    messages: [
+       { id: 'm1', senderId: 'me', text: 'Are you free this weekend?', timestamp: 'Mon', isMe: true },
+    ]
+  }
 ];
