@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { X, ArrowRightLeft } from 'lucide-react';
+import { X, ArrowRightLeft, Check } from 'lucide-react';
 import { translations } from '../data';
 import { Book } from '../types';
 
@@ -74,10 +75,13 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({
                   <div className="aspect-[2/3] bg-slate-200 relative">
                      <img src={book.imageUrl} alt={book.title} className="w-full h-full object-cover" />
                      {selectedBookId === book.id && (
-                       <div className="absolute inset-0 bg-sky-900/20 flex items-center justify-center">
-                          <div className="bg-sky-500 text-white p-2 rounded-full">
-                            <ArrowRightLeft className="w-6 h-6" />
+                       <div className="absolute inset-0 bg-sky-900/50 backdrop-blur-[2px] flex flex-col items-center justify-center animate-in fade-in duration-200">
+                          <div className="bg-sky-500 text-white p-3 rounded-full shadow-lg mb-2 transform scale-110">
+                            <Check className="w-6 h-6" strokeWidth={3} />
                           </div>
+                          <span className="text-white font-bold text-sm tracking-widest uppercase drop-shadow-md">
+                            {t.selected}
+                          </span>
                        </div>
                      )}
                   </div>
