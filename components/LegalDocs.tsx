@@ -1,15 +1,33 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { translations } from '../data';
 import { Shield, Lock, BookOpen } from 'lucide-react';
 
 interface LegalDocsProps {
   lang: 'en' | 'ko';
+  initialTab?: 'terms' | 'privacy' | 'damage';
 }
 
-const LegalDocs: React.FC<LegalDocsProps> = ({ lang }) => {
+const LegalDocs: React.FC<LegalDocsProps> = ({ lang, initialTab = 'terms' }) => {
   const t = translations[lang];
-  const [activeTab, setActiveTab] = useState<'terms' | 'privacy' | 'damage'>('terms');
+  const [activeTab, setActiveTab] = useState<'terms' | 'privacy' | 'damage'>(initialTab);
+
+  // Sync state if initialTab changes (e.g., via footer navigation while on the page)
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
+  // Simple parser to render **Bold Headers**
+  const renderFormattedText = (text: string) => {
+    return text.split('\n').map((line, index) => {
+      if (line.trim().startsWith('**') && line.trim().endsWith('**')) {
+        return <h3 key={index} className="font-serif text-lg font-bold text-slate-900 mt-6 mb-2">{line.replace(/\*\*/g, '')}</h3>;
+      } else if (line.trim() === '') {
+        return <div key={index} className="h-2"></div>;
+      }
+      return <p key={index} className="text-slate-600 leading-relaxed mb-2">{line}</p>;
+    });
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
@@ -59,7 +77,7 @@ const LegalDocs: React.FC<LegalDocsProps> = ({ lang }) => {
           <div>
             <h2 className="font-serif text-2xl text-slate-900 mb-6">{t.termsTitle}</h2>
             <div className="prose prose-slate max-w-none">
-              <p className="text-slate-600 leading-relaxed whitespace-pre-line">{t.termsContent}</p>
+              {renderFormattedText(t.termsContent)}
             </div>
           </div>
         )}
@@ -68,7 +86,7 @@ const LegalDocs: React.FC<LegalDocsProps> = ({ lang }) => {
           <div>
             <h2 className="font-serif text-2xl text-slate-900 mb-6">{t.privacyTitle}</h2>
             <div className="prose prose-slate max-w-none">
-              <p className="text-slate-600 leading-relaxed whitespace-pre-line">{t.privacyContent}</p>
+               {renderFormattedText(t.privacyContent)}
             </div>
           </div>
         )}
@@ -77,7 +95,7 @@ const LegalDocs: React.FC<LegalDocsProps> = ({ lang }) => {
           <div>
             <h2 className="font-serif text-2xl text-slate-900 mb-6">{t.damageTitle}</h2>
             <div className="prose prose-slate max-w-none">
-              <p className="text-slate-600 leading-relaxed whitespace-pre-line">{t.damageContent}</p>
+               {renderFormattedText(t.damageContent)}
             </div>
           </div>
         )}

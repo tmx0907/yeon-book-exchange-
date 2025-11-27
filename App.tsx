@@ -403,9 +403,16 @@ const App: React.FC = () => {
         </main>
       )}
       
-      {view === 'legal' && (
+      {(view === 'legal' || view === 'legal-privacy' || view === 'legal-damage') && (
          <main className="flex-grow w-full bg-slate-50">
-            <LegalDocs lang={lang} />
+            <LegalDocs 
+              lang={lang} 
+              initialTab={
+                view === 'legal-privacy' ? 'privacy' : 
+                view === 'legal-damage' ? 'damage' : 
+                'terms'
+              }
+            />
          </main>
       )}
 

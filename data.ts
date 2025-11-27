@@ -100,11 +100,11 @@ export const translations: Translations = {
     
     // Legal & Policy Text
     termsTitle: "Terms of Harmony",
-    termsContent: "Yeon is a neutral venue designed to facilitate the exchange of books between individuals. We do not own, sell, or inspect the books listed. Users are solely responsible for their interactions, the quality of books exchanged, and their personal safety. By using Yeon, you agree to communicate respectfully and honour your exchange commitments.",
+    termsContent: "**1. The Platform Role**\nYeon is a neutral venue designed to facilitate the exchange of books between individuals. We do not own, sell, or inspect the books listed. Users are solely responsible for their interactions, the quality of books exchanged, and their personal safety.\n\n**2. User Conduct**\nBy using Yeon, you agree to communicate respectfully, honour your exchange commitments, and meet in safe public locations. Harassment or fraudulent behavior will result in immediate account suspension.\n\n**3. Liability**\nYeon is not liable for any loss, damage, or injury arising from exchanges. We act solely as a connector.",
     privacyTitle: "Privacy Policy",
-    privacyContent: "We value your privacy and comply with the Australian Privacy Principles. We collect only the minimum information required to facilitate exchanges (name, rough location, and reading preferences). Your precise location is never shared publicly. We do not sell your data to third parties.",
+    privacyContent: "**1. Data Collection**\nWe value your privacy and comply with the Australian Privacy Principles. We collect only the minimum information required to facilitate exchanges: your name, rough location (Suburb/State), and email for account management.\n\n**2. Location Privacy**\nYour precise address is never shared publicly. Matches are made based on suburb-level data.\n\n**3. Data Usage**\nWe do not sell your personal data to third parties. Data is used strictly for app functionality and community safety monitoring.",
     damageTitle: "Damage & Restitution",
-    damageContent: "We follow a standard similar to university libraries. If a book is damaged beyond normal wear and tear (e.g., water damage, tearing, extensive marking), the borrower is expected to replace it with a copy of the same ISBN or a newer edition. If replacement is not possible, a standard compensation fee (approx. AU $125 or current market value) is recommended. Honesty is paramount; please report accidental damage immediately."
+    damageContent: "**1. Defining Damage**\nNormal wear and tear (slight yellowing, minor creasing of the spine) is acceptable in used books. However, the following constitute damage requiring compensation:\n• Water damage or mold (health hazard)\n• Missing or torn pages\n• Heavy highlighting or writing that obscures text\n• Broken spine or detached covers\n\n**2. Replacement First Policy**\nIf a book is damaged while in your care, the primary remedy is to replace it with a copy of the same ISBN or a newer edition in 'Good' or better condition.\n\n**3. Financial Compensation**\nIf a replacement cannot be sourced, the borrower is liable for the replacement cost. Following Australian university library standards, a standard fee (approx. AU $125) or the current market value (plus shipping) applies.\n\n**4. Honesty & Reporting**\nAccidents happen. If you damage a book, please inform the owner immediately via chat. Community members who self-report are often treated with more leniency regarding fees.\n\n**5. Dispute Resolution**\nAlways inspect books upon meeting. Once the exchange is complete, the condition is accepted 'as-is' unless hidden damage is discovered within 24 hours."
   },
   ko: {
     appTitle: "연 (Yeon).",
@@ -204,11 +204,11 @@ export const translations: Translations = {
 
     // Legal & Policy Text (Korean)
     termsTitle: "이용 약관 (Terms of Harmony)",
-    termsContent: "연(Yeon)은 개인 간의 책 교환을 돕기 위한 중립적인 플랫폼입니다. 저희는 등록된 책을 소유하거나 판매하지 않으며, 책의 상태를 직접 검수하지 않습니다. 모든 교환 과정, 책의 품질 확인, 그리고 개인의 안전에 대한 책임은 사용자 본인에게 있습니다. 서비스를 이용함으로써 귀하는 상대방을 존중하고 약속을 성실히 이행할 것에 동의합니다.",
+    termsContent: "**1. 플랫폼의 역할**\n연(Yeon)은 개인 간의 책 교환을 돕기 위한 중립적인 플랫폼입니다. 저희는 등록된 책을 소유하거나 판매하지 않으며, 모든 교환 과정, 책의 품질 확인, 그리고 개인의 안전에 대한 책임은 사용자 본인에게 있습니다.\n\n**2. 사용자 수칙**\n서비스를 이용함으로써 귀하는 상대방을 존중하고, 약속을 성실히 이행하며, 안전한 공공장소에서 만날 것에 동의합니다. 부적절한 언행이나 사기 행위는 즉시 계정 정지 사유가 됩니다.\n\n**3. 책임의 제한**\n연(Yeon)은 교환 과정에서 발생하는 손실, 손상 또는 분쟁에 대해 법적 책임을 지지 않습니다.",
     privacyTitle: "개인정보 처리방침",
-    privacyContent: "저희는 호주 개인정보 보호 원칙(Australian Privacy Principles)을 준수합니다. 교환 매칭을 위해 필요한 최소한의 정보(이름, 대략적인 위치, 독서 취향)만을 수집합니다. 귀하의 정확한 상세 주소는 공개되지 않으며, 수집된 데이터는 제3자에게 판매되지 않습니다.",
+    privacyContent: "**1. 수집하는 정보**\n호주 개인정보 보호 원칙(Australian Privacy Principles)을 준수합니다. 교환 매칭을 위해 필요한 최소한의 정보(이름, 대략적인 위치, 독서 취향)만을 수집합니다.\n\n**2. 위치 정보 보호**\n귀하의 정확한 상세 주소는 공개되지 않으며, 매칭은 Suburb(동네) 단위로만 이루어집니다.\n\n**3. 정보의 사용**\n수집된 데이터는 서비스 운영과 커뮤니티 안전 모니터링 목적으로만 사용되며, 제3자에게 판매되지 않습니다.",
     damageTitle: "손상 및 보상 규정",
-    damageContent: "도서관 반납 규정과 유사한 기준을 적용합니다. 통상적인 마모를 넘어선 손상(물 젖음, 찢어짐, 과도한 낙서 등)이 발생한 경우, 빌린 사람은 동일한 ISBN의 새 책이나 최신 판본으로 변상해야 합니다. 책을 구하기 어려운 경우, 시장 가격에 상응하는 금액(약 AU $125 또는 협의된 금액)으로 보상하는 것을 원칙으로 합니다. 실수는 누구나 할 수 있습니다. 손상 발생 시 즉시 상대방에게 알리고 사과하는 것이 가장 중요합니다."
+    damageContent: "**1. 손상 기준 정의**\n책의 자연스러운 변색이나 가벼운 구김은 '생활 기스'로 간주합니다. 그러나 다음의 경우는 손상으로 분류됩니다:\n• 물에 젖거나 곰팡이가 핀 경우 (위생 문제)\n• 페이지가 찢어지거나 분실된 경우\n• 텍스트를 가릴 정도의 낙서나 밑줄\n• 제본이 뜯어지거나 표지가 파손된 경우\n\n**2. 실물 교환 원칙**\n책이 손상된 경우, 동일한 ISBN 혹은 최신 개정판(상태 'Good' 이상)으로 구해 변상하는 것을 최우선으로 합니다.\n\n**3. 금전적 보상**\n책을 구할 수 없는 경우, 해당 도서의 현재 시세에 배송비를 더한 금액을 보상해야 합니다. 희귀 도서의 경우 호주 대학 도서관 기준에 따라 약 AU $125의 표준 보상금이 적용될 수 있습니다.\n\n**4. 자진 신고**\n실수는 누구나 할 수 있습니다. 손상이 발생하면 즉시 채팅으로 알리고 사과해주세요. 정직한 소통은 불필요한 분쟁을 막습니다.\n\n**5. 현장 확인**\n교환 시 현장에서 책 상태를 꼼꼼히 확인해주세요. 교환이 완료된 후에는 24시간 내에 숨겨진 손상이 발견되지 않는 한 '있는 그대로(as-is)' 인수한 것으로 간주합니다."
   }
 };
 

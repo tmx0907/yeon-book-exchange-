@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { translations } from '../data';
 import { Translations } from '../types';
@@ -32,8 +33,8 @@ const Footer: React.FC<FooterProps> = ({ lang, onLinkClick }) => {
              <h4 className="text-white font-medium mb-4">Legal</h4>
              <ul className="space-y-2 text-sm text-slate-400">
                <li><button onClick={() => onLinkClick('legal')} className="hover:text-white text-left">{t.legal}</button></li>
-               <li><button onClick={() => onLinkClick('legal')} className="hover:text-white text-left">Privacy Policy</button></li>
-               <li><button onClick={() => onLinkClick('safety')} className="hover:text-white text-left">Damage & Returns</button></li>
+               <li><button onClick={() => onLinkClick('legal-privacy')} className="hover:text-white text-left">Privacy Policy</button></li>
+               <li><button onClick={() => onLinkClick('legal-damage')} className="hover:text-white text-left">Damage & Returns</button></li>
              </ul>
           </div>
         </div>
