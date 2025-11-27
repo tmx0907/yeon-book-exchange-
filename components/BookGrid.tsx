@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { State, Book } from '../types';
 import { translations } from '../data';
@@ -25,12 +26,15 @@ const BookGrid: React.FC<BookGridProps> = ({
   const t = translations[lang];
 
   const filteredBooks = books.filter((book) => {
+    // Show only Available books in public marketplace. In My Library, show everything.
+    const isAvailable = isMyLibrary ? true : book.status === 'Available';
     const matchesState = isMyLibrary ? true : (selectedState === 'All' || book.location.state === selectedState);
     const matchesSearch =
       book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       book.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
       book.isbn.includes(searchTerm);
-    return matchesState && matchesSearch;
+    
+    return isAvailable && matchesState && matchesSearch;
   });
 
   return (
@@ -85,7 +89,7 @@ const BookGrid: React.FC<BookGridProps> = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
         {filteredBooks.map((book) => (
-          <div key={book.id} className="group cursor-pointer">
+          <div key={book.id} className={`group cursor-pointer ${book.status === 'Swapped' ? 'opacity-60' : ''}`}>
             <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-slate-100 mb-6 shadow-sm border border-slate-100">
                <img 
                  src={book.imageUrl} 
@@ -94,14 +98,19 @@ const BookGrid: React.FC<BookGridProps> = ({
                />
                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300"></div>
                
-               <div className="absolute top-4 left-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md ${book.condition === 'New' ? 'bg-white/90 text-emerald-700' : 'bg-white/90 text-amber-700'}`}>
+               <div className="absolute top-4 left-4 flex flex-col gap-2">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md self-start ${book.condition === 'New' ? 'bg-white/90 text-emerald-700' : 'bg-white/90 text-amber-700'}`}>
                     {book.condition}
                   </span>
+                  {book.status === 'Swapped' && (
+                     <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md bg-slate-900/90 text-white self-start">
+                        Swapped
+                     </span>
+                  )}
                </div>
                
                {/* Hover Overlay Action */}
-               {!isMyLibrary && (
+               {!isMyLibrary && book.status === 'Available' && (
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                      <button 
                        onClick={(e) => { e.stopPropagation(); onExchangeClick(book); }}

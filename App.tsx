@@ -13,7 +13,7 @@ import ExchangeModal from './components/ExchangeModal';
 import UserProfile from './components/UserProfile';
 import EditProfileModal from './components/EditProfileModal';
 import LegalDocs from './components/LegalDocs';
-import { Language, Book, Chat, Message, User, ExchangeTransaction } from './types';
+import { Language, Book, Chat, Message, User, ExchangeTransaction, ExchangeProposal } from './types';
 import { translations, mockBooks, mockChats, currentUser as initialUser, mockExchanges } from './data';
 import { ArrowRight } from 'lucide-react';
 
@@ -84,7 +84,8 @@ const App: React.FC = () => {
       location: { suburb: user.suburb, state: user.state },
       points: 10,
       imageUrl: bookData.imageUrl || '',
-      category: bookData.category || 'Fiction'
+      category: bookData.category || 'Fiction',
+      status: 'Available'
     };
     setAllBooks([newBook, ...allBooks]);
     setView('profile'); // Redirect to profile/library after upload
@@ -199,13 +200,16 @@ const App: React.FC = () => {
   };
 
   const handleAcceptProposal = (chatId: string, messageId: string, proposalId: string) => {
-    // 1. Update Chat Message
-    const updatedChats = chats.map(c => {
+    // 1. Find the proposal info to identify which books need to be locked
+    let acceptedProposal: ExchangeProposal | undefined;
+    
+    const chatsWithAcceptedProposal = chats.map(c => {
       if (c.id === chatId) {
         return {
           ...c,
           messages: c.messages.map(m => {
             if (m.id === messageId && m.proposal) {
+              acceptedProposal = m.proposal;
               return { ...m, proposal: { ...m.proposal, status: 'accepted' as const } };
             }
             return m;
@@ -214,12 +218,46 @@ const App: React.FC = () => {
       }
       return c;
     });
-    setChats(updatedChats);
 
-    // 2. Update History Status if exists (simulating real-time sync)
-    // In a real app, this would be synced via ID.
-    // Since we are mocking, we won't see the history update for the *other* user,
-    // but we would update it if we were tracking it locally.
+    if (!acceptedProposal) return;
+
+    // 2. Mark Books as Swapped
+    const targetBookId = acceptedProposal.targetBookId;
+    const offeredBookId = acceptedProposal.offeredBookId;
+
+    const updatedBooks = allBooks.map(b => {
+      if (b.id === targetBookId || b.id === offeredBookId) {
+        return { ...b, status: 'Swapped' as const };
+      }
+      return b;
+    });
+    setAllBooks(updatedBooks);
+    
+    // 3. Reject Conflicting Proposals
+    // Find any pending proposals that involve the same Target Book OR the same Offered Book
+    const finalChats = chatsWithAcceptedProposal.map(c => ({
+      ...c,
+      messages: c.messages.map(m => {
+        if (m.proposal && m.proposal.status === 'pending' && m.proposal.id !== proposalId) {
+           const involvesTarget = m.proposal.targetBookId === targetBookId || m.proposal.targetBookId === offeredBookId;
+           const involvesOffered = m.proposal.offeredBookId === targetBookId || m.proposal.offeredBookId === offeredBookId;
+           
+           if (involvesTarget || involvesOffered) {
+             return { ...m, proposal: { ...m.proposal, status: 'rejected' as const } };
+           }
+        }
+        return m;
+      })
+    }));
+
+    setChats(finalChats);
+    
+    // 4. Update History
+    setExchangeHistory(prev => prev.map(tx => {
+       if (tx.id === proposalId) return { ...tx, status: 'Completed' };
+       // Also reject history for conflicting transactions if we were tracking them by ID
+       return tx; 
+    }));
   };
 
   const handleRejectProposal = (chatId: string, messageId: string, proposalId: string) => {

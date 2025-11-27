@@ -18,6 +18,7 @@ export interface Book {
   points: number;
   imageUrl: string;
   category: string;
+  status: 'Available' | 'Swapped'; // Added status
 }
 
 export interface User {
@@ -32,7 +33,7 @@ export interface User {
   rating: number; // 0-5
   joinDate: string;
   avatarUrl: string;
-  favoriteQuote?: string; // New field for philosophical quote
+  favoriteQuote?: string; 
 }
 
 export interface Discussion {
@@ -45,11 +46,11 @@ export interface Discussion {
 }
 
 export interface ExchangeProposal {
-  id: string; // Add ID to proposal for tracking
+  id: string; 
   targetBookId: string;
   targetBookTitle: string;
   targetBookImage: string;
-  offeredBookId: string; // The book I am offering
+  offeredBookId: string; 
   offeredBookTitle: string;
   offeredBookImage: string;
   status: 'pending' | 'accepted' | 'rejected';
@@ -72,7 +73,7 @@ export interface Message {
   text: string;
   timestamp: string;
   isMe: boolean;
-  proposal?: ExchangeProposal; // Optional structured data for a swap proposal
+  proposal?: ExchangeProposal; 
 }
 
 export interface Chat {

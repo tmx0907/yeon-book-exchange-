@@ -69,6 +69,7 @@ export const translations: Translations = {
     decline: "Decline",
     accepted: "Proposal Accepted",
     rejected: "Proposal Declined",
+    autoRejected: "Item Unavailable",
     selectBookToOffer: "Select a book to offer",
     selectBookDesc: "Which of your books would you like to trade for",
     selected: "Selected",
@@ -173,6 +174,7 @@ export const translations: Translations = {
     decline: "거절",
     accepted: "제안 수락됨",
     rejected: "제안 거절됨",
+    autoRejected: "이미 교환됨",
     selectBookToOffer: "교환할 책 선택",
     selectBookDesc: "상대방의 책과 교환하기 위해 내 서재에서 책을 골라주세요:",
     selected: "선택됨",
@@ -281,7 +283,8 @@ export const mockBooks: Book[] = [
     location: { suburb: 'Strathfield', state: 'NSW' },
     points: 15,
     imageUrl: 'https://picsum.photos/seed/book1/300/450',
-    category: 'Economy'
+    category: 'Economy',
+    status: 'Available'
   },
   {
     id: '2',
@@ -294,7 +297,8 @@ export const mockBooks: Book[] = [
     location: { suburb: 'Eastwood', state: 'NSW' },
     points: 10,
     imageUrl: 'https://picsum.photos/seed/book2/300/450',
-    category: 'Fiction'
+    category: 'Fiction',
+    status: 'Available'
   },
   {
     id: '3',
@@ -307,7 +311,8 @@ export const mockBooks: Book[] = [
     location: { suburb: 'Box Hill', state: 'VIC' },
     points: 12,
     imageUrl: 'https://picsum.photos/seed/book3/300/450',
-    category: 'Fiction'
+    category: 'Fiction',
+    status: 'Available'
   },
   {
     id: '4',
@@ -320,7 +325,8 @@ export const mockBooks: Book[] = [
     location: { suburb: 'Sunnybank', state: 'QLD' },
     points: 8,
     imageUrl: 'https://picsum.photos/seed/book4/300/450',
-    category: 'Fiction'
+    category: 'Fiction',
+    status: 'Available'
   },
   {
     id: '5',
@@ -333,7 +339,8 @@ export const mockBooks: Book[] = [
     location: { suburb: 'Chatswood', state: 'NSW' },
     points: 15,
     imageUrl: 'https://picsum.photos/seed/book5/300/450',
-    category: 'History'
+    category: 'History',
+    status: 'Available'
   },
   {
     id: '6',
@@ -346,7 +353,8 @@ export const mockBooks: Book[] = [
     location: { suburb: 'Canning Vale', state: 'WA' },
     points: 10,
     imageUrl: 'https://picsum.photos/seed/book6/300/450',
-    category: 'Young Adult'
+    category: 'Young Adult',
+    status: 'Available'
   },
   {
     id: '7',
@@ -359,7 +367,8 @@ export const mockBooks: Book[] = [
     location: { suburb: 'Melbourne CBD', state: 'VIC' },
     points: 13,
     imageUrl: 'https://picsum.photos/seed/book7/300/450',
-    category: 'Sci-Fi'
+    category: 'Sci-Fi',
+    status: 'Available'
   },
   {
     id: '8',
@@ -372,7 +381,8 @@ export const mockBooks: Book[] = [
     location: { suburb: 'Gold Coast', state: 'QLD' },
     points: 11,
     imageUrl: 'https://picsum.photos/seed/book8/300/450',
-    category: 'Fantasy'
+    category: 'Fantasy',
+    status: 'Available'
   }
 ];
 
