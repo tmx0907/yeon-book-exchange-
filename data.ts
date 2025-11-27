@@ -27,6 +27,8 @@ export const translations: Translations = {
     logout: "Sign Out",
     welcome: "Welcome",
     newArrivals: "Discover Stories",
+    freshlyShelved: "Freshly Shelved", // New
+    viewAll: "View All", // New
     howItWorks: "The Journey",
     step1Title: "Release",
     step1Desc: "Let go of books you've loved.",
@@ -132,6 +134,8 @@ export const translations: Translations = {
     logout: "로그아웃",
     welcome: "환영합니다",
     newArrivals: "새로운 이야기",
+    freshlyShelved: "방금 들어온 책", // New
+    viewAll: "전체 보기", // New
     howItWorks: "여정",
     step1Title: "비움",
     step1Desc: "다 읽은 책을 새로운 주인에게 보냅니다.",

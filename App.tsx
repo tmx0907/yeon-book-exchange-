@@ -330,8 +330,28 @@ const App: React.FC = () => {
                     books={marketBooks.slice(0, 4)} 
                     onMessageClick={handleMessageClick}
                     onExchangeClick={handleInitiateExchange}
+                    currentUserId={user.id}
                   />
                </div>
+            </section>
+
+            {/* Freshly Shelved Section */}
+            <section className="py-20 bg-white border-t border-slate-100">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                 <div className="flex justify-between items-center mb-10">
+                    <h2 className="font-serif text-3xl text-slate-900">{t.freshlyShelved}</h2>
+                    <button onClick={() => setView('search')} className="text-sm font-semibold text-sky-600 hover:text-sky-700 flex items-center gap-1 group">
+                       {t.viewAll} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                 </div>
+                 <BookGrid 
+                    lang={lang} 
+                    books={marketBooks.slice(4, 8)} 
+                    onMessageClick={handleMessageClick}
+                    onExchangeClick={handleInitiateExchange}
+                    currentUserId={user.id}
+                 />
+              </div>
             </section>
 
             <section className="py-24 bg-white">
@@ -380,6 +400,7 @@ const App: React.FC = () => {
               books={marketBooks} 
               onMessageClick={handleMessageClick}
               onExchangeClick={handleInitiateExchange}
+              currentUserId={user.id}
            />
         </main>
       )}
