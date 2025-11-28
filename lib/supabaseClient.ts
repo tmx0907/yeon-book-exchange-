@@ -1,11 +1,44 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 // ------------------------------------------------------------------
-// 🛑 IMPORTANT: REPLACE THESE WITH YOUR KEYS FROM SUPABASE DASHBOARD
-// Go to Settings -> API -> Project URL & anon/public key
+// 🔑 Supabase Client Configuration
 // ------------------------------------------------------------------
-const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || 'https://snyfhftwyqcnqplbkcnw.supabase.co';
-const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNueWZoZnR3eXFjbnFwbGJrY253Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzMDA5MDEsImV4cCI6MjA3OTg3NjkwMX0.-c3SvvDBBOICu18IXdLXS-TUWhMLtypheA3F7Czc-jk';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Helper to safely access environment variables in various environments
+const getEnv = (key: string): string | undefined => {
+  // 1. Try Vite standard (import.meta.env)
+  try {
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+      return (import.meta as any).env[key];
+    }
+  } catch (e) {
+    // Ignore errors accessing import.meta
+  }
+
+  // 2. Try Node/Webpack standard (process.env)
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env[key];
+    }
+  } catch (e) {
+    // Ignore errors accessing process
+  }
+
+  return undefined;
+};
+
+const supabaseUrl = getEnv('VITE_SUPABASE_URL');
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY');
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn(
+    '🔴 [Supabase Warning] API keys are missing. Using mock connection to prevent crash. Please ensure your .env file exists and contains VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
+  );
+}
+
+// Fallback to placeholder values to prevent "supabaseUrl is required" error.
+// The app will load, but network requests will fail until real keys are provided in .env
+const url = supabaseUrl || 'https://placeholder.supabase.co';
+const key = supabaseAnonKey || 'placeholder-key';
+
+export const supabase = createClient(url, key);

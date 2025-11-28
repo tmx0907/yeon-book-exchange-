@@ -311,7 +311,10 @@ const App: React.FC = () => {
 
   // Derived state for My Books
   const myBooks = allBooks.filter(b => user && b.ownerId === user.id);
-  const marketBooks = allBooks.filter(b => !user || b.ownerId !== user.id); // For market, show others
+  
+  // FIX: Allow user to see their own books in the market view (no filtering by ID)
+  // This ensures newly uploaded books appear on Home/Search immediately.
+  const marketBooks = allBooks; 
 
   const handleLogin = () => { /* Handled in Auth Component */ };
   const handleLogout = async () => { await supabase.auth.signOut(); };
@@ -385,6 +388,28 @@ const App: React.FC = () => {
                   <BookGrid 
                     lang={lang} 
                     books={marketBooks.slice(0, 4)} 
+                    onMessageClick={(b) => handleInitiateExchange(b)}
+                    onExchangeClick={handleInitiateExchange}
+                    currentUserId={user?.id}
+                  />
+               </div>
+            </section>
+            
+             {/* FRESHLY SHELVED SECTION */}
+            <section className="py-24 bg-white">
+               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="flex flex-col md:flex-row justify-between items-end mb-16">
+                    <div className="mb-6 md:mb-0">
+                       <p className="text-emerald-600 font-bold uppercase tracking-widest text-xs mb-3">Just In</p>
+                       <h2 className="font-serif text-4xl md:text-5xl text-slate-900">{t.freshlyShelved}</h2>
+                    </div>
+                    <button onClick={() => setView('search')} className="text-sky-600 hover:text-sky-700 font-medium flex items-center gap-2">
+                       {t.viewAll} <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <BookGrid 
+                    lang={lang} 
+                    books={marketBooks.slice(4, 8)} 
                     onMessageClick={(b) => handleInitiateExchange(b)}
                     onExchangeClick={handleInitiateExchange}
                     currentUserId={user?.id}
