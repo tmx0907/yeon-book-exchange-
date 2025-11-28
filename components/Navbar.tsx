@@ -20,21 +20,24 @@ const Navbar: React.FC<NavbarProps> = ({ lang, setLang, setView, isLoggedIn, onL
     <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-50">
       <div className="max-w-7xl mx-auto px-6 sm:px-12 lg:px-16">
         <div className="flex justify-between items-center h-24">
-          
+
           {/* Logo */}
           <div className="flex-shrink-0 cursor-pointer" onClick={() => setView('home')}>
             <span className="text-2xl font-serif font-bold text-slate-900 tracking-tight">
               {t.appTitle}<span className="text-sky-500"></span>
             </span>
           </div>
-          
+
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center space-x-12">
-             <button onClick={() => setView('home')} className="text-slate-500 hover:text-slate-900 text-sm font-medium transition-colors">
+            <button onClick={() => setView('home')} className="text-slate-500 hover:text-slate-900 text-sm font-medium transition-colors">
               Home
             </button>
-             <button onClick={() => setView('search')} className="text-slate-500 hover:text-slate-900 text-sm font-medium transition-colors">
+            <button onClick={() => setView('search')} className="text-slate-500 hover:text-slate-900 text-sm font-medium transition-colors">
               {t.findBooks}
+            </button>
+            <button onClick={() => setView('community')} className="text-slate-500 hover:text-slate-900 text-sm font-medium transition-colors">
+              Community
             </button>
             {isLoggedIn && (
               <button onClick={() => setView('profile')} className="text-slate-500 hover:text-slate-900 text-sm font-medium transition-colors">
@@ -51,10 +54,10 @@ const Navbar: React.FC<NavbarProps> = ({ lang, setLang, setView, isLoggedIn, onL
             <button onClick={() => setView('search')} className="text-slate-400 hover:text-sky-600 transition-colors">
               <Search className="h-5 w-5" />
             </button>
-            
+
             <button onClick={() => setView('messages')} className="text-slate-400 hover:text-sky-600 transition-colors relative">
-               <MessageCircle className="h-5 w-5" />
-               {isLoggedIn && <span className="absolute -top-1 -right-1 h-2 w-2 bg-sky-500 rounded-full border border-white"></span>}
+              <MessageCircle className="h-5 w-5" />
+              {isLoggedIn && <span className="absolute -top-1 -right-1 h-2 w-2 bg-sky-500 rounded-full border border-white"></span>}
             </button>
 
             <button
@@ -86,29 +89,29 @@ const Navbar: React.FC<NavbarProps> = ({ lang, setLang, setView, isLoggedIn, onL
                 </div>
               </div>
             ) : (
-              <button 
+              <button
                 onClick={() => setView('login')}
                 className="text-sm font-medium text-slate-900 hover:text-sky-600 transition-colors"
               >
                 {t.login}
               </button>
             )}
-            
-             <button className="text-slate-900 md:hidden">
-               <Menu className="h-6 w-6" onClick={() => setIsMenuOpen(true)}/>
-             </button>
+
+            <button className="text-slate-900 md:hidden">
+              <Menu className="h-6 w-6" onClick={() => setIsMenuOpen(true)} />
+            </button>
           </div>
 
           {/* Mobile Toggle */}
           <div className="flex items-center md:hidden space-x-4">
-             <button
+            <button
               onClick={() => setView('messages')}
               className="text-slate-400 relative"
             >
               <MessageCircle className="h-6 w-6" />
               {isLoggedIn && <span className="absolute -top-1 -right-1 h-2 w-2 bg-sky-500 rounded-full border border-white"></span>}
             </button>
-             <button
+            <button
               onClick={() => setLang(lang === 'en' ? 'ko' : 'en')}
               className="text-xs font-semibold text-slate-500 uppercase"
             >
@@ -127,47 +130,53 @@ const Navbar: React.FC<NavbarProps> = ({ lang, setLang, setView, isLoggedIn, onL
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="md:hidden bg-white absolute top-24 left-0 w-full shadow-xl py-6 px-6 flex flex-col space-y-4">
-            <button 
-              onClick={() => { setView('search'); setIsMenuOpen(false); }}
+          <button
+            onClick={() => { setView('search'); setIsMenuOpen(false); }}
+            className="text-left text-lg font-serif text-slate-800"
+          >
+            {t.findBooks}
+          </button>
+          <button
+            onClick={() => { setView('community'); setIsMenuOpen(false); }}
+            className="text-left text-lg font-serif text-slate-800"
+          >
+            Community
+          </button>
+          {isLoggedIn && (
+            <button
+              onClick={() => { setView('profile'); setIsMenuOpen(false); }}
               className="text-left text-lg font-serif text-slate-800"
             >
-              {t.findBooks}
+              {t.profile}
             </button>
-             {isLoggedIn && (
-               <button 
-                onClick={() => { setView('profile'); setIsMenuOpen(false); }}
-                className="text-left text-lg font-serif text-slate-800"
-              >
-                {t.profile}
-              </button>
-             )}
-            <button 
-              onClick={() => { setView('safety'); setIsMenuOpen(false); }}
-              className="text-left text-lg font-serif text-slate-800"
+          )}
+          <button
+            onClick={() => { setView('safety'); setIsMenuOpen(false); }}
+            className="text-left text-lg font-serif text-slate-800"
+          >
+            {t.safetyTitle}
+          </button>
+          <button
+            onClick={() => { setView('messages'); setIsMenuOpen(false); }}
+            className="text-left text-lg font-serif text-slate-800"
+          >
+            {t.messages}
+          </button>
+          {isLoggedIn ? (
+            <button
+              onClick={() => { onLogout(); setIsMenuOpen(false); }}
+              className="text-left text-lg font-serif text-slate-500 mt-4"
             >
-              {t.safetyTitle}
+              {t.logout}
             </button>
-            <button 
-              onClick={() => { setView('messages'); setIsMenuOpen(false); }}
-              className="text-left text-lg font-serif text-slate-800"
+          ) : (
+            <button
+              onClick={() => { setView('login'); setIsMenuOpen(false); }}
+              className="text-left text-lg font-serif text-sky-600 font-bold mt-4"
             >
-              {t.messages}
+              {t.login}
             </button>
-            {isLoggedIn ? (
-               <button 
-                onClick={() => { onLogout(); setIsMenuOpen(false); }}
-                className="text-left text-lg font-serif text-slate-500 mt-4"
-              >
-                {t.logout}
-              </button>
-            ) : (
-               <button 
-                onClick={() => { setView('login'); setIsMenuOpen(false); }}
-                className="text-left text-lg font-serif text-sky-600 font-bold mt-4"
-              >
-                {t.login}
-              </button>
-            )}
+          )}
         </div>
       )}
     </nav>

@@ -13,6 +13,7 @@ import ExchangeModal from './components/ExchangeModal';
 import UserProfile from './components/UserProfile';
 import EditProfileModal from './components/EditProfileModal';
 import LegalDocs from './components/LegalDocs';
+import CommunityMain from './components/Community/CommunityMain';
 import { Language, Book, Chat, Message, User, ExchangeTransaction, ExchangeProposal } from './types';
 import { translations, mockBooks, mockExchanges } from './data';
 import { ArrowRight } from 'lucide-react';
@@ -20,9 +21,9 @@ import { supabase } from './lib/supabaseClient';
 
 const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('en');
-  const [view, setView] = useState('home'); 
+  const [view, setView] = useState('home');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  
+
   // --- REAL SUPABASE STATE ---
   const [user, setUser] = useState<User | null>(null);
   const [allBooks, setAllBooks] = useState<Book[]>([]);
@@ -74,7 +75,7 @@ const App: React.FC = () => {
       .select('*')
       .eq('id', userId)
       .single();
-    
+
     if (data) {
       setUser({
         id: data.id,
@@ -142,10 +143,10 @@ const App: React.FC = () => {
       // Note: profiles array comes back. 
       // Supabase returns arrays for relations unless mapped differently.
       // Simplified extraction:
-      const partnerProfile = isPartnerA ? c.profiles_partner_b : c.profiles_partner_a; 
+      const partnerProfile = isPartnerA ? c.profiles_partner_b : c.profiles_partner_a;
       // NOTE: In raw response, it might be nested differently depending on query. 
       // For this quick prototype, let's just fetch messages to build the object.
-      
+
       // Let's get messages for this chat
       const { data: msgs } = await supabase
         .from('messages')
@@ -166,7 +167,7 @@ const App: React.FC = () => {
       // We will do a second fetch if needed or rely on ID logic.
       // But let's assume we store partner details locally or rely on what we have.
       const partnerId = isPartnerA ? c.partner_b : c.partner_a;
-      
+
       // Need partner name/avatar. 
       // For speed, let's fetch profile of partner
       const { data: pData } = await supabase.from('profiles').select('name, avatar_url').eq('id', partnerId).single();
@@ -205,7 +206,7 @@ const App: React.FC = () => {
 
   const handleUploadBook = async (bookData: Partial<Book>) => {
     if (!user) return;
-    
+
     const newBook = {
       title: bookData.title,
       author: bookData.author,
@@ -226,7 +227,7 @@ const App: React.FC = () => {
 
   const handleSendMessage = async (chatId: string, text: string) => {
     if (!user) return;
-    
+
     // Insert message
     await supabase.from('messages').insert([{
       chat_id: chatId,
@@ -274,20 +275,20 @@ const App: React.FC = () => {
     // 2. Create Proposal Data
     const isOpenProposal = offeredBook === 'OPEN';
     const proposalData: ExchangeProposal = {
-        id: Date.now().toString(),
-        targetBookId: exchangeTarget.id,
-        targetBookTitle: exchangeTarget.title,
-        targetBookImage: exchangeTarget.imageUrl,
-        type: isOpenProposal ? 'open' : 'direct',
-        offeredBookId: isOpenProposal ? undefined : offeredBook.id,
-        offeredBookTitle: isOpenProposal ? undefined : offeredBook.title,
-        offeredBookImage: isOpenProposal ? undefined : offeredBook.imageUrl,
-        status: 'pending'
+      id: Date.now().toString(),
+      targetBookId: exchangeTarget.id,
+      targetBookTitle: exchangeTarget.title,
+      targetBookImage: exchangeTarget.imageUrl,
+      type: isOpenProposal ? 'open' : 'direct',
+      offeredBookId: isOpenProposal ? undefined : offeredBook.id,
+      offeredBookTitle: isOpenProposal ? undefined : offeredBook.title,
+      offeredBookImage: isOpenProposal ? undefined : offeredBook.imageUrl,
+      status: 'pending'
     };
 
-    const text = isOpenProposal 
-       ? `${t.proposalTitle}: ${t.openProposalDesc} ${exchangeTarget.title}`
-       : `${t.proposalTitle}: ${offeredBook.title} for ${exchangeTarget.title}`;
+    const text = isOpenProposal
+      ? `${t.proposalTitle}: ${t.openProposalDesc} ${exchangeTarget.title}`
+      : `${t.proposalTitle}: ${offeredBook.title} for ${exchangeTarget.title}`;
 
     // 3. Send Message
     await supabase.from('messages').insert([{
@@ -311,10 +312,10 @@ const App: React.FC = () => {
 
   // Derived state for My Books
   const myBooks = allBooks.filter(b => user && b.ownerId === user.id);
-  
+
   // FIX: Allow user to see their own books in the market view (no filtering by ID)
   // This ensures newly uploaded books appear on Home/Search immediately.
-  const marketBooks = allBooks; 
+  const marketBooks = allBooks;
 
   const handleLogin = () => { /* Handled in Auth Component */ };
   const handleLogout = async () => { await supabase.auth.signOut(); };
@@ -328,46 +329,46 @@ const App: React.FC = () => {
       favorite_quote: updatedUser.favoriteQuote,
       avatar_url: updatedUser.avatarUrl
     }).eq('id', updatedUser.id);
-    
+
     setUser(updatedUser);
     setIsEditingProfile(false);
   };
-  
+
   // NOTE: Simple version of proposal acceptance (Database update)
   const handleAcceptProposal = async (chatId: string, messageId: string, proposalId: string) => {
-     // For this MVP, we need to update the message JSONB. 
-     // Fetch the message first to get data? No, we have it in state.
-     const chat = chats.find(c => c.id === chatId);
-     const msg = chat?.messages.find(m => m.id === messageId);
-     if(msg && msg.proposal) {
-        const newProposal = { ...msg.proposal, status: 'accepted' };
-        
-        await supabase.from('messages').update({
-           proposal_data: newProposal
-        }).eq('id', messageId);
+    // For this MVP, we need to update the message JSONB. 
+    // Fetch the message first to get data? No, we have it in state.
+    const chat = chats.find(c => c.id === chatId);
+    const msg = chat?.messages.find(m => m.id === messageId);
+    if (msg && msg.proposal) {
+      const newProposal = { ...msg.proposal, status: 'accepted' };
 
-        // Mark books as swapped
-        await supabase.from('books').update({ status: 'Swapped' }).eq('id', newProposal.targetBookId);
-        if(newProposal.offeredBookId) {
-            await supabase.from('books').update({ status: 'Swapped' }).eq('id', newProposal.offeredBookId);
-        }
-        
-        // Refresh
-        fetchUserChats(user!.id);
-        loadPublicData();
-     }
+      await supabase.from('messages').update({
+        proposal_data: newProposal
+      }).eq('id', messageId);
+
+      // Mark books as swapped
+      await supabase.from('books').update({ status: 'Swapped' }).eq('id', newProposal.targetBookId);
+      if (newProposal.offeredBookId) {
+        await supabase.from('books').update({ status: 'Swapped' }).eq('id', newProposal.offeredBookId);
+      }
+
+      // Refresh
+      fetchUserChats(user!.id);
+      loadPublicData();
+    }
   };
 
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans">
-      <Navbar 
-        lang={lang} 
-        setLang={setLang} 
-        setView={setView} 
+      <Navbar
+        lang={lang}
+        setLang={setLang}
+        setView={setView}
         isLoggedIn={isLoggedIn}
         onLogout={handleLogout}
       />
-      
+
       {view === 'home' && (
         <>
           <Hero lang={lang} onFindBooks={() => setView('search')} />
@@ -378,43 +379,43 @@ const App: React.FC = () => {
               </div>
             </section>
             <section className="py-24 bg-slate-50/50">
-               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <div className="flex flex-col md:flex-row justify-between items-end mb-16">
-                    <div className="mb-6 md:mb-0">
-                      <p className="text-sky-600 font-bold uppercase tracking-widest text-xs mb-3">Curated Exchange</p>
-                      <h2 className="font-serif text-4xl md:text-5xl text-slate-900">{t.newArrivals}</h2>
-                    </div>
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex flex-col md:flex-row justify-between items-end mb-16">
+                  <div className="mb-6 md:mb-0">
+                    <p className="text-sky-600 font-bold uppercase tracking-widest text-xs mb-3">Curated Exchange</p>
+                    <h2 className="font-serif text-4xl md:text-5xl text-slate-900">{t.newArrivals}</h2>
                   </div>
-                  <BookGrid 
-                    lang={lang} 
-                    books={marketBooks.slice(0, 4)} 
-                    onMessageClick={(b) => handleInitiateExchange(b)}
-                    onExchangeClick={handleInitiateExchange}
-                    currentUserId={user?.id}
-                  />
-               </div>
+                </div>
+                <BookGrid
+                  lang={lang}
+                  books={marketBooks.slice(0, 4)}
+                  onMessageClick={(b) => handleInitiateExchange(b)}
+                  onExchangeClick={handleInitiateExchange}
+                  currentUserId={user?.id}
+                />
+              </div>
             </section>
-            
-             {/* FRESHLY SHELVED SECTION */}
+
+            {/* FRESHLY SHELVED SECTION */}
             <section className="py-24 bg-white">
-               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <div className="flex flex-col md:flex-row justify-between items-end mb-16">
-                    <div className="mb-6 md:mb-0">
-                       <p className="text-emerald-600 font-bold uppercase tracking-widest text-xs mb-3">Just In</p>
-                       <h2 className="font-serif text-4xl md:text-5xl text-slate-900">{t.freshlyShelved}</h2>
-                    </div>
-                    <button onClick={() => setView('search')} className="text-sky-600 hover:text-sky-700 font-medium flex items-center gap-2">
-                       {t.viewAll} <ArrowRight className="w-4 h-4" />
-                    </button>
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex flex-col md:flex-row justify-between items-end mb-16">
+                  <div className="mb-6 md:mb-0">
+                    <p className="text-emerald-600 font-bold uppercase tracking-widest text-xs mb-3">Just In</p>
+                    <h2 className="font-serif text-4xl md:text-5xl text-slate-900">{t.freshlyShelved}</h2>
                   </div>
-                  <BookGrid 
-                    lang={lang} 
-                    books={marketBooks.slice(4, 8)} 
-                    onMessageClick={(b) => handleInitiateExchange(b)}
-                    onExchangeClick={handleInitiateExchange}
-                    currentUserId={user?.id}
-                  />
-               </div>
+                  <button onClick={() => setView('search')} className="text-sky-600 hover:text-sky-700 font-medium flex items-center gap-2">
+                    {t.viewAll} <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+                <BookGrid
+                  lang={lang}
+                  books={marketBooks.slice(4, 8)}
+                  onMessageClick={(b) => handleInitiateExchange(b)}
+                  onExchangeClick={handleInitiateExchange}
+                  currentUserId={user?.id}
+                />
+              </div>
             </section>
           </main>
         </>
@@ -422,33 +423,33 @@ const App: React.FC = () => {
 
       {view === 'login' && (
         <main className="flex-grow w-full">
-          <Auth lang={lang} onLogin={() => {}} />
+          <Auth lang={lang} onLogin={() => { }} />
         </main>
       )}
 
       {view === 'search' && (
         <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
-           <BookGrid 
-              lang={lang} 
-              books={marketBooks} 
-              onMessageClick={(b) => handleInitiateExchange(b)}
-              onExchangeClick={handleInitiateExchange}
-              currentUserId={user?.id}
-           />
+          <BookGrid
+            lang={lang}
+            books={marketBooks}
+            onMessageClick={(b) => handleInitiateExchange(b)}
+            onExchangeClick={handleInitiateExchange}
+            currentUserId={user?.id}
+          />
         </main>
       )}
 
       {(view === 'profile' || view === 'my-library') && user && (
-         <main className="flex-grow w-full bg-slate-50/50">
-            <UserProfile 
-              lang={lang}
-              user={user}
-              myBooks={myBooks}
-              history={exchangeHistory} // History needs proper fetching implementation in v2
-              onAddBook={() => setView('upload')}
-              onEdit={() => setIsEditingProfile(true)}
-            />
-         </main>
+        <main className="flex-grow w-full bg-slate-50/50">
+          <UserProfile
+            lang={lang}
+            user={user}
+            myBooks={myBooks}
+            history={exchangeHistory} // History needs proper fetching implementation in v2
+            onAddBook={() => setView('upload')}
+            onEdit={() => setIsEditingProfile(true)}
+          />
+        </main>
       )}
 
       {view === 'upload' && isLoggedIn && (
@@ -458,27 +459,37 @@ const App: React.FC = () => {
       )}
 
       {view === 'messages' && (
-         <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
-            <ChatInterface 
-              lang={lang} 
-              chats={chats}
-              initialChatId={activeChatId}
-              onSendMessage={handleSendMessage}
-              onAcceptProposal={handleAcceptProposal}
-              onRejectProposal={() => {}} // Implement similar to accept
-              onBrowseLibrary={() => setView('search')}
-            />
-         </main>
-      )}
-      
-      {view === 'safety' && <main className="flex-grow w-full"><SafetyBanner lang={lang}/></main>}
-      
-      {(view === 'legal' || view === 'legal-privacy' || view === 'legal-damage') && (
-         <main className="flex-grow w-full bg-slate-50">
-            <LegalDocs lang={lang} initialTab={view === 'legal-privacy' ? 'privacy' : view === 'legal-damage' ? 'damage' : 'terms'} />
-         </main>
+        <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+          <ChatInterface
+            lang={lang}
+            chats={chats}
+            initialChatId={activeChatId}
+            onSendMessage={handleSendMessage}
+            onAcceptProposal={handleAcceptProposal}
+            onRejectProposal={() => { }} // Implement similar to accept
+            onBrowseLibrary={() => setView('search')}
+          />
+        </main>
       )}
 
+      {view === 'safety' && <main className="flex-grow w-full"><SafetyBanner lang={lang} /></main>}
+
+      {(view === 'legal' || view === 'legal-privacy' || view === 'legal-damage') && (
+        <main className="flex-grow w-full bg-slate-50">
+          <LegalDocs lang={lang} initialTab={view === 'legal-privacy' ? 'privacy' : view === 'legal-damage' ? 'damage' : 'terms'} />
+        </main>
+      )}
+
+      {view === 'community' && (
+        <main className="flex-grow w-full bg-slate-50/30">
+          <CommunityMain
+            user={user}
+            onLoginRedirect={() => setView('login')}
+          />
+        </main>
+      )}
+
+      {/* Modals */}
       {exchangeTarget && (
         <ExchangeModal
           lang={lang}
@@ -491,12 +502,12 @@ const App: React.FC = () => {
       )}
 
       {isEditingProfile && user && (
-         <EditProfileModal
-            lang={lang}
-            user={user}
-            onClose={() => setIsEditingProfile(false)}
-            onSave={handleUpdateProfile}
-         />
+        <EditProfileModal
+          lang={lang}
+          user={user}
+          onClose={() => setIsEditingProfile(false)}
+          onSave={handleUpdateProfile}
+        />
       )}
 
       <Footer lang={lang} onLinkClick={setView} />
