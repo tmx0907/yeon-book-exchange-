@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import BookGrid from './components/BookGrid';
@@ -14,283 +14,345 @@ import UserProfile from './components/UserProfile';
 import EditProfileModal from './components/EditProfileModal';
 import LegalDocs from './components/LegalDocs';
 import { Language, Book, Chat, Message, User, ExchangeTransaction, ExchangeProposal } from './types';
-import { translations, mockBooks, mockChats, currentUser as initialUser, mockExchanges } from './data';
+import { translations, mockBooks, mockExchanges } from './data';
 import { ArrowRight } from 'lucide-react';
-
-const CURRENT_USER_ID = 'me';
+import { supabase } from './lib/supabaseClient';
 
 const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('en');
   const [view, setView] = useState('home'); 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   
-  // Data State
-  const [user, setUser] = useState<User>(initialUser);
-  const [allBooks, setAllBooks] = useState<Book[]>(mockBooks);
-  const [chats, setChats] = useState<Chat[]>(mockChats);
-  const [activeChatId, setActiveChatId] = useState<string | undefined>(undefined);
-  const [exchangeHistory, setExchangeHistory] = useState<ExchangeTransaction[]>(mockExchanges);
-  
-  // Exchange Flow State
-  const [exchangeTarget, setExchangeTarget] = useState<Book | null>(null);
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  // --- REAL SUPABASE STATE ---
+  const [user, setUser] = useState<User | null>(null);
+  const [allBooks, setAllBooks] = useState<Book[]>([]);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [exchangeHistory, setExchangeHistory] = useState<ExchangeTransaction[]>([]);
 
-  const t = translations[lang];
+  // --- INITIAL LOAD & AUTH ---
+  useEffect(() => {
+    // 1. Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) fetchUserProfile(session.user.id);
+      else loadPublicData(); // Load books even if not logged in
+    });
 
-  // Derived state for My Books
-  const myBooks = allBooks.filter(b => b.ownerId === user.id);
-  const marketBooks = allBooks.filter(b => b.ownerId !== user.id);
+    // 2. Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setIsLoggedIn(true);
+        fetchUserProfile(session.user.id);
+        fetchUserChats(session.user.id);
+      } else {
+        setIsLoggedIn(false);
+        setUser(null);
+        setChats([]);
+        loadPublicData();
+      }
+    });
 
-  const handleLogin = (userData?: { name: string; email: string }) => {
-    if (userData) {
-      // Simulate a unique ID for the logged in user based on email
-      // This ensures we treat different logins as different users for the session
-      const newUserId = userData.email === initialUser.email ? initialUser.id : userData.email;
-      const isInitialUser = newUserId === initialUser.id;
+    // 3. Realtime Subscription for Books (Global)
+    const bookChannel = supabase
+      .channel('public:books')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'books' }, (payload) => {
+        // Refresh books when change happens
+        loadPublicData();
+      })
+      .subscribe();
 
-      setUser(prev => ({
-        ...prev,
-        id: newUserId,
-        name: userData.name,
-        email: userData.email,
-        // If it's the demo user, keep the demo avatar. If it's a new email, generate a new pravatar.
-        avatarUrl: isInitialUser ? prev.avatarUrl : `https://i.pravatar.cc/150?u=${userData.email}`,
-        // Reset stats for new users
-        points: isInitialUser ? prev.points : 50,
-        booksRead: isInitialUser ? prev.booksRead : 0,
-        exchangesCompleted: isInitialUser ? prev.exchangesCompleted : 0,
-        favoriteQuote: isInitialUser ? prev.favoriteQuote : ''
-      }));
+    return () => {
+      subscription.unsubscribe();
+      supabase.removeChannel(bookChannel);
+    };
+  }, []);
+
+  // --- FETCHING FUNCTIONS ---
+
+  const fetchUserProfile = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    
+    if (data) {
+      setUser({
+        id: data.id,
+        name: data.name || 'User',
+        email: data.email,
+        state: data.state || 'NSW',
+        suburb: data.suburb || '',
+        points: data.points,
+        booksRead: 0,
+        exchangesCompleted: 0,
+        rating: 4.8,
+        joinDate: data.join_date || 'Recently',
+        avatarUrl: data.avatar_url,
+        favoriteQuote: data.favorite_quote
+      });
+      setIsLoggedIn(true);
+      fetchUserChats(userId);
     }
-    setIsLoggedIn(true);
-    setView('home');
+    loadPublicData();
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setView('home');
-    setUser(initialUser);
+  const loadPublicData = async () => {
+    // Fetch all available books
+    const { data: booksData } = await supabase
+      .from('books')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (booksData) {
+      const mappedBooks: Book[] = booksData.map((b: any) => ({
+        id: b.id,
+        title: b.title,
+        author: b.author,
+        isbn: b.isbn || '0000',
+        condition: b.condition,
+        ownerId: b.owner_id,
+        ownerName: b.owner_name,
+        location: { suburb: b.location_suburb, state: b.location_state },
+        points: b.points,
+        imageUrl: b.image_url,
+        category: b.category,
+        status: b.status
+      }));
+      setAllBooks(mappedBooks);
+    }
   };
 
-  const handleUploadBook = (bookData: Partial<Book>) => {
-    const newBook: Book = {
-      id: Date.now().toString(),
-      title: bookData.title || 'Untitled',
-      author: bookData.author || 'Unknown',
-      isbn: '0000',
-      condition: bookData.condition || 'New',
-      ownerId: user.id,
-      ownerName: user.name,
-      location: { suburb: user.suburb, state: user.state },
-      points: 10,
-      imageUrl: bookData.imageUrl || '',
-      category: bookData.category || 'Fiction',
+  const fetchUserChats = async (userId: string) => {
+    // 1. Get Chats where user is A or B
+    const { data: chatsData } = await supabase
+      .from('chats')
+      .select(`
+        id, partner_a, partner_b, last_message, last_message_time,
+        profiles!partner_a(name, avatar_url),
+        profiles!partner_b(name, avatar_url)
+      `)
+      .or(`partner_a.eq.${userId},partner_b.eq.${userId}`)
+      .order('updated_at', { ascending: false });
+
+    if (!chatsData) return;
+
+    const loadedChats: Chat[] = await Promise.all(chatsData.map(async (c: any) => {
+      const isPartnerA = c.partner_a === userId;
+      // If I am A, partner is B. If I am B, partner is A.
+      // Note: profiles array comes back. 
+      // Supabase returns arrays for relations unless mapped differently.
+      // Simplified extraction:
+      const partnerProfile = isPartnerA ? c.profiles_partner_b : c.profiles_partner_a; 
+      // NOTE: In raw response, it might be nested differently depending on query. 
+      // For this quick prototype, let's just fetch messages to build the object.
+      
+      // Let's get messages for this chat
+      const { data: msgs } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('chat_id', c.id)
+        .order('created_at', { ascending: true });
+
+      const messages: Message[] = (msgs || []).map((m: any) => ({
+        id: m.id,
+        senderId: m.sender_id,
+        text: m.text,
+        timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isMe: m.sender_id === userId,
+        proposal: m.proposal_data
+      }));
+
+      // Hacky way to get partner info if the join above is tricky in simple mode
+      // We will do a second fetch if needed or rely on ID logic.
+      // But let's assume we store partner details locally or rely on what we have.
+      const partnerId = isPartnerA ? c.partner_b : c.partner_a;
+      
+      // Need partner name/avatar. 
+      // For speed, let's fetch profile of partner
+      const { data: pData } = await supabase.from('profiles').select('name, avatar_url').eq('id', partnerId).single();
+
+      return {
+        id: c.id,
+        partnerId: partnerId,
+        partnerName: pData?.name || 'Partner',
+        partnerAvatar: pData?.avatar_url || 'https://i.pravatar.cc/150',
+        lastMessage: c.last_message,
+        lastMessageTime: new Date(c.last_message_time).toLocaleDateString(),
+        unread: 0,
+        messages: messages
+      };
+    }));
+
+    setChats(loadedChats);
+  };
+
+  // --- Realtime Chat Subscription ---
+  useEffect(() => {
+    if (!user) return;
+
+    const chatChannel = supabase
+      .channel('public:messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        // When a new message arrives, refresh chats
+        fetchUserChats(user.id);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(chatChannel); };
+  }, [user]);
+
+  // --- ACTIONS ---
+
+  const handleUploadBook = async (bookData: Partial<Book>) => {
+    if (!user) return;
+    
+    const newBook = {
+      title: bookData.title,
+      author: bookData.author,
+      condition: bookData.condition,
+      category: bookData.category,
+      image_url: bookData.imageUrl,
+      owner_id: user.id,
+      owner_name: user.name,
+      location_state: user.state,
+      location_suburb: user.suburb,
       status: 'Available'
     };
-    setAllBooks([newBook, ...allBooks]);
-    setView('profile'); // Redirect to profile/library after upload
+
+    await supabase.from('books').insert([newBook]);
+    // Realtime will auto-update the list
+    setView('profile');
   };
 
-  const handleUpdateProfile = (updatedUser: User) => {
-    setUser(updatedUser);
-    setIsEditingProfile(false);
+  const handleSendMessage = async (chatId: string, text: string) => {
+    if (!user) return;
+    
+    // Insert message
+    await supabase.from('messages').insert([{
+      chat_id: chatId,
+      sender_id: user.id,
+      text: text,
+      proposal_data: null
+    }]);
+
+    // Update Chat last message
+    await supabase.from('chats').update({
+      last_message: text,
+      last_message_time: new Date().toISOString()
+    }).eq('id', chatId);
+
+    // Fetch will happen via realtime
   };
 
   const handleInitiateExchange = (targetBook: Book) => {
-    if (!isLoggedIn) {
+    if (!user) {
       setView('login');
       return;
     }
     setExchangeTarget(targetBook);
   };
 
-  const handleConfirmExchange = (offeredBook: Book) => {
-    if (!exchangeTarget) return;
+  const handleConfirmExchange = async (offeredBook: Book | 'OPEN') => {
+    if (!exchangeTarget || !user) return;
 
-    // Create a new chat or find existing one
-    let chat = chats.find(c => c.partnerId === exchangeTarget.ownerId);
-    const proposalId = Date.now().toString();
-    
-    if (!chat) {
-      chat = {
-        id: Date.now().toString(),
-        partnerId: exchangeTarget.ownerId,
-        partnerName: exchangeTarget.ownerName,
-        partnerAvatar: `https://i.pravatar.cc/150?u=${exchangeTarget.ownerId}`,
-        lastMessage: t.proposalSent,
-        lastMessageTime: 'Just now',
-        unread: 0,
-        messages: []
-      };
-      setChats([chat, ...chats]);
+    // 1. Check if chat exists
+    let chatId: string;
+    const existingChat = chats.find(c => c.partnerId === exchangeTarget.ownerId);
+
+    if (existingChat) {
+      chatId = existingChat.id;
+    } else {
+      // Create new chat
+      const { data: newChat } = await supabase.from('chats').insert([{
+        partner_a: user.id,
+        partner_b: exchangeTarget.ownerId,
+        last_message: 'Exchange Proposal'
+      }]).select().single();
+      chatId = newChat.id;
     }
 
-    // Add the proposal message
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      senderId: user.id,
-      text: `${t.proposalTitle}: ${offeredBook.title} for ${exchangeTarget.title}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isMe: true,
-      proposal: {
-        id: proposalId,
+    // 2. Create Proposal Data
+    const isOpenProposal = offeredBook === 'OPEN';
+    const proposalData: ExchangeProposal = {
+        id: Date.now().toString(),
         targetBookId: exchangeTarget.id,
         targetBookTitle: exchangeTarget.title,
         targetBookImage: exchangeTarget.imageUrl,
-        offeredBookId: offeredBook.id,
-        offeredBookTitle: offeredBook.title,
-        offeredBookImage: offeredBook.imageUrl,
+        type: isOpenProposal ? 'open' : 'direct',
+        offeredBookId: isOpenProposal ? undefined : offeredBook.id,
+        offeredBookTitle: isOpenProposal ? undefined : offeredBook.title,
+        offeredBookImage: isOpenProposal ? undefined : offeredBook.imageUrl,
         status: 'pending'
-      }
     };
 
-    const updatedChats = chats.map(c => 
-      c.id === chat!.id 
-        ? { ...c, messages: [...c.messages, newMessage], lastMessage: t.proposalSent, lastMessageTime: 'Just now' }
-        : c
-    );
-    
-    // If it was a new chat, we need to add it to the list properly
-    if (!chats.find(c => c.partnerId === exchangeTarget.ownerId)) {
-       updatedChats.unshift({...chat, messages: [newMessage]});
-    }
+    const text = isOpenProposal 
+       ? `${t.proposalTitle}: ${t.openProposalDesc} ${exchangeTarget.title}`
+       : `${t.proposalTitle}: ${offeredBook.title} for ${exchangeTarget.title}`;
 
-    setChats(updatedChats);
+    // 3. Send Message
+    await supabase.from('messages').insert([{
+      chat_id: chatId,
+      sender_id: user.id,
+      text: text,
+      proposal_data: proposalData
+    }]);
 
-    // Add to Exchange History as Pending
-    const newTransaction: ExchangeTransaction = {
-      id: proposalId,
-      bookGivenTitle: offeredBook.title,
-      bookGivenImage: offeredBook.imageUrl,
-      bookReceivedTitle: exchangeTarget.title,
-      bookReceivedImage: exchangeTarget.imageUrl,
-      partnerName: exchangeTarget.ownerName,
-      date: new Date().toLocaleDateString(),
-      status: 'Pending'
-    };
-    setExchangeHistory([newTransaction, ...exchangeHistory]);
-
-    setActiveChatId(chat.id);
     setExchangeTarget(null);
+    setActiveChatId(chatId);
     setView('messages');
   };
 
-  const handleSendMessage = (chatId: string, text: string) => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      senderId: user.id,
-      text: text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isMe: true
-    };
+  // --- STATE ---
+  const [activeChatId, setActiveChatId] = useState<string | undefined>(undefined);
+  const [exchangeTarget, setExchangeTarget] = useState<Book | null>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
-    const updatedChats = chats.map(chat => {
-      if (chat.id === chatId) {
-        return {
-          ...chat,
-          messages: [...chat.messages, newMessage],
-          lastMessage: text,
-          lastMessageTime: 'Just now'
-        };
-      }
-      return chat;
-    });
+  const t = translations[lang];
 
-    setChats(updatedChats);
+  // Derived state for My Books
+  const myBooks = allBooks.filter(b => user && b.ownerId === user.id);
+  const marketBooks = allBooks.filter(b => !user || b.ownerId !== user.id); // For market, show others
+
+  const handleLogin = () => { /* Handled in Auth Component */ };
+  const handleLogout = async () => { await supabase.auth.signOut(); };
+
+  // Helper for Profile Edit
+  const handleUpdateProfile = async (updatedUser: User) => {
+    await supabase.from('profiles').update({
+      name: updatedUser.name,
+      suburb: updatedUser.suburb,
+      state: updatedUser.state,
+      favorite_quote: updatedUser.favoriteQuote,
+      avatar_url: updatedUser.avatarUrl
+    }).eq('id', updatedUser.id);
+    
+    setUser(updatedUser);
+    setIsEditingProfile(false);
   };
+  
+  // NOTE: Simple version of proposal acceptance (Database update)
+  const handleAcceptProposal = async (chatId: string, messageId: string, proposalId: string) => {
+     // For this MVP, we need to update the message JSONB. 
+     // Fetch the message first to get data? No, we have it in state.
+     const chat = chats.find(c => c.id === chatId);
+     const msg = chat?.messages.find(m => m.id === messageId);
+     if(msg && msg.proposal) {
+        const newProposal = { ...msg.proposal, status: 'accepted' };
+        
+        await supabase.from('messages').update({
+           proposal_data: newProposal
+        }).eq('id', messageId);
 
-  const handleAcceptProposal = (chatId: string, messageId: string, proposalId: string) => {
-    // 1. Find the proposal info to identify which books need to be locked
-    let acceptedProposal: ExchangeProposal | undefined;
-    
-    const chatsWithAcceptedProposal = chats.map(c => {
-      if (c.id === chatId) {
-        return {
-          ...c,
-          messages: c.messages.map(m => {
-            if (m.id === messageId && m.proposal) {
-              acceptedProposal = m.proposal;
-              return { ...m, proposal: { ...m.proposal, status: 'accepted' as const } };
-            }
-            return m;
-          })
-        };
-      }
-      return c;
-    });
-
-    if (!acceptedProposal) return;
-
-    // 2. Mark Books as Swapped
-    const targetBookId = acceptedProposal.targetBookId;
-    const offeredBookId = acceptedProposal.offeredBookId;
-
-    const updatedBooks = allBooks.map(b => {
-      if (b.id === targetBookId || b.id === offeredBookId) {
-        return { ...b, status: 'Swapped' as const };
-      }
-      return b;
-    });
-    setAllBooks(updatedBooks);
-    
-    // 3. Reject Conflicting Proposals
-    // Find any pending proposals that involve the same Target Book OR the same Offered Book
-    const finalChats = chatsWithAcceptedProposal.map(c => ({
-      ...c,
-      messages: c.messages.map(m => {
-        if (m.proposal && m.proposal.status === 'pending' && m.proposal.id !== proposalId) {
-           const involvesTarget = m.proposal.targetBookId === targetBookId || m.proposal.targetBookId === offeredBookId;
-           const involvesOffered = m.proposal.offeredBookId === targetBookId || m.proposal.offeredBookId === offeredBookId;
-           
-           if (involvesTarget || involvesOffered) {
-             return { ...m, proposal: { ...m.proposal, status: 'rejected' as const } };
-           }
+        // Mark books as swapped
+        await supabase.from('books').update({ status: 'Swapped' }).eq('id', newProposal.targetBookId);
+        if(newProposal.offeredBookId) {
+            await supabase.from('books').update({ status: 'Swapped' }).eq('id', newProposal.offeredBookId);
         }
-        return m;
-      })
-    }));
-
-    setChats(finalChats);
-    
-    // 4. Update History
-    setExchangeHistory(prev => prev.map(tx => {
-       if (tx.id === proposalId) return { ...tx, status: 'Completed' };
-       // Also reject history for conflicting transactions if we were tracking them by ID
-       return tx; 
-    }));
-  };
-
-  const handleRejectProposal = (chatId: string, messageId: string, proposalId: string) => {
-    const updatedChats = chats.map(c => {
-      if (c.id === chatId) {
-        return {
-          ...c,
-          messages: c.messages.map(m => {
-            if (m.id === messageId && m.proposal) {
-              return { ...m, proposal: { ...m.proposal, status: 'rejected' as const } };
-            }
-            return m;
-          })
-        };
-      }
-      return c;
-    });
-    setChats(updatedChats);
-    
-    // Update history for current user if applicable
-    setExchangeHistory(prev => prev.map(tx => tx.id === proposalId ? { ...tx, status: 'Rejected' } : tx));
-  };
-
-  const handleMessageClick = (book: Book) => {
-     if(!isLoggedIn) {
-       setView('login');
-       return;
+        
+        // Refresh
+        fetchUserChats(user!.id);
+        loadPublicData();
      }
-     const existingChat = chats.find(c => c.partnerId === book.ownerId);
-     if(existingChat) {
-       setActiveChatId(existingChat.id);
-     }
-     setView('messages');
   };
 
   return (
@@ -306,14 +368,12 @@ const App: React.FC = () => {
       {view === 'home' && (
         <>
           <Hero lang={lang} onFindBooks={() => setView('search')} />
-          
           <main className="flex-grow w-full">
             <section className="bg-white py-20 lg:py-32 border-b border-slate-50">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <SafetyBanner lang={lang} />
               </div>
             </section>
-
             <section className="py-24 bg-slate-50/50">
                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                   <div className="flex flex-col md:flex-row justify-between items-end mb-16">
@@ -321,62 +381,14 @@ const App: React.FC = () => {
                       <p className="text-sky-600 font-bold uppercase tracking-widest text-xs mb-3">Curated Exchange</p>
                       <h2 className="font-serif text-4xl md:text-5xl text-slate-900">{t.newArrivals}</h2>
                     </div>
-                    <button onClick={() => setView('search')} className="group flex items-center text-slate-800 font-medium hover:text-sky-600 transition-colors">
-                       View Collection <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </button>
                   </div>
                   <BookGrid 
                     lang={lang} 
                     books={marketBooks.slice(0, 4)} 
-                    onMessageClick={handleMessageClick}
+                    onMessageClick={(b) => handleInitiateExchange(b)}
                     onExchangeClick={handleInitiateExchange}
-                    currentUserId={user.id}
+                    currentUserId={user?.id}
                   />
-               </div>
-            </section>
-
-            {/* Freshly Shelved Section */}
-            <section className="py-20 bg-white border-t border-slate-100">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                 <div className="flex justify-between items-center mb-10">
-                    <h2 className="font-serif text-3xl text-slate-900">{t.freshlyShelved}</h2>
-                    <button onClick={() => setView('search')} className="text-sm font-semibold text-sky-600 hover:text-sky-700 flex items-center gap-1 group">
-                       {t.viewAll} <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </button>
-                 </div>
-                 <BookGrid 
-                    lang={lang} 
-                    books={marketBooks.slice(4, 8)} 
-                    onMessageClick={handleMessageClick}
-                    onExchangeClick={handleInitiateExchange}
-                    currentUserId={user.id}
-                 />
-              </div>
-            </section>
-
-            <section className="py-24 bg-white">
-               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                     <div>
-                        <h2 className="font-serif text-4xl text-slate-900 mb-6">{t.statsTitle}</h2>
-                        <p className="text-slate-500 text-lg leading-relaxed mb-8">
-                           Yeon is growing across the continent. Join thousands of readers in NSW, Victoria, and Queensland who are discovering the joy of shared stories.
-                        </p>
-                        <div className="flex gap-4">
-                           <div className="bg-slate-50 p-6 rounded-2xl w-full">
-                              <p className="text-3xl font-serif text-slate-900 mb-1">2.4k+</p>
-                              <p className="text-xs text-slate-400 uppercase tracking-widest">Books Shared</p>
-                           </div>
-                           <div className="bg-slate-50 p-6 rounded-2xl w-full">
-                              <p className="text-3xl font-serif text-slate-900 mb-1">98%</p>
-                              <p className="text-xs text-slate-400 uppercase tracking-widest">Happy Readers</p>
-                           </div>
-                        </div>
-                     </div>
-                     <div className="h-[400px]">
-                        <StatsChart lang={lang} />
-                     </div>
-                  </div>
                </div>
             </section>
           </main>
@@ -385,33 +397,29 @@ const App: React.FC = () => {
 
       {view === 'login' && (
         <main className="flex-grow w-full">
-          <Auth lang={lang} onLogin={handleLogin} />
+          <Auth lang={lang} onLogin={() => {}} />
         </main>
       )}
 
       {view === 'search' && (
         <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
-           <div className="mb-16 text-center">
-             <h2 className="font-serif text-5xl text-slate-900 mb-4">{t.findBooks}</h2>
-             <p className="text-slate-500 max-w-2xl mx-auto">Explore the library of shared wisdom from the community.</p>
-           </div>
            <BookGrid 
               lang={lang} 
               books={marketBooks} 
-              onMessageClick={handleMessageClick}
+              onMessageClick={(b) => handleInitiateExchange(b)}
               onExchangeClick={handleInitiateExchange}
-              currentUserId={user.id}
+              currentUserId={user?.id}
            />
         </main>
       )}
 
-      {(view === 'profile' || view === 'my-library') && isLoggedIn && (
+      {(view === 'profile' || view === 'my-library') && user && (
          <main className="flex-grow w-full bg-slate-50/50">
             <UserProfile 
               lang={lang}
               user={user}
               myBooks={myBooks}
-              history={exchangeHistory}
+              history={exchangeHistory} // History needs proper fetching implementation in v2
               onAddBook={() => setView('upload')}
               onEdit={() => setIsEditingProfile(true)}
             />
@@ -426,56 +434,26 @@ const App: React.FC = () => {
 
       {view === 'messages' && (
          <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
-           {isLoggedIn ? (
-             <ChatInterface 
-                lang={lang} 
-                chats={chats}
-                initialChatId={activeChatId}
-                onSendMessage={handleSendMessage}
-                onAcceptProposal={handleAcceptProposal}
-                onRejectProposal={handleRejectProposal}
-             />
-           ) : (
-             <div className="text-center py-20">
-               <h3 className="font-serif text-2xl mb-4">Please Sign In</h3>
-               <button onClick={() => setView('login')} className="text-sky-600 hover:underline">Go to Login</button>
-             </div>
-           )}
-         </main>
-      )}
-
-      {view === 'safety' && (
-        <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
-           <SafetyBanner lang={lang} />
-           
-           <div className="mt-16 bg-slate-50 p-10 rounded-3xl max-w-3xl mx-auto prose prose-slate">
-              <h3 className="font-serif text-2xl text-slate-900">Community Guidelines</h3>
-              <p className="text-slate-600">
-                To ensure a harmonious experience for all members, we have established guidelines grounded in respect and transparency.
-              </p>
-              
-              <h4 className="font-serif text-xl text-slate-900 mt-8">For our Victorian Members</h4>
-              <p className="text-slate-600">
-                We strongly recommend utilizing the designated <strong>Safer Exchange Sites</strong> located at major police stations across Victoria. These provide a neutral, monitored environment for your peace of mind.
-              </p>
-           </div>
-        </main>
-      )}
-      
-      {(view === 'legal' || view === 'legal-privacy' || view === 'legal-damage') && (
-         <main className="flex-grow w-full bg-slate-50">
-            <LegalDocs 
+            <ChatInterface 
               lang={lang} 
-              initialTab={
-                view === 'legal-privacy' ? 'privacy' : 
-                view === 'legal-damage' ? 'damage' : 
-                'terms'
-              }
+              chats={chats}
+              initialChatId={activeChatId}
+              onSendMessage={handleSendMessage}
+              onAcceptProposal={handleAcceptProposal}
+              onRejectProposal={() => {}} // Implement similar to accept
+              onBrowseLibrary={() => setView('search')}
             />
          </main>
       )}
+      
+      {view === 'safety' && <main className="flex-grow w-full"><SafetyBanner lang={lang}/></main>}
+      
+      {(view === 'legal' || view === 'legal-privacy' || view === 'legal-damage') && (
+         <main className="flex-grow w-full bg-slate-50">
+            <LegalDocs lang={lang} initialTab={view === 'legal-privacy' ? 'privacy' : view === 'legal-damage' ? 'damage' : 'terms'} />
+         </main>
+      )}
 
-      {/* Modals */}
       {exchangeTarget && (
         <ExchangeModal
           lang={lang}
@@ -483,14 +461,11 @@ const App: React.FC = () => {
           myBooks={myBooks}
           onClose={() => setExchangeTarget(null)}
           onConfirm={handleConfirmExchange}
-          onUploadRedirect={() => {
-             setExchangeTarget(null);
-             setView('upload');
-          }}
+          onUploadRedirect={() => { setExchangeTarget(null); setView('upload'); }}
         />
       )}
 
-      {isEditingProfile && isLoggedIn && (
+      {isEditingProfile && user && (
          <EditProfileModal
             lang={lang}
             user={user}

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, ArrowRightLeft, Check } from 'lucide-react';
+import { X, ArrowRightLeft, Check, Sparkles } from 'lucide-react';
 import { translations } from '../data';
 import { Book } from '../types';
 
@@ -9,7 +9,7 @@ interface ExchangeModalProps {
   targetBook: Book;
   myBooks: Book[];
   onClose: () => void;
-  onConfirm: (offeredBook: Book) => void;
+  onConfirm: (offeredBook: Book | 'OPEN') => void;
   onUploadRedirect: () => void;
 }
 
@@ -47,8 +47,26 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({
              <span className="font-bold text-slate-900">"{targetBook.title}"</span>
           </div>
 
+          <div className="mb-8">
+            <button 
+              onClick={() => onConfirm('OPEN')}
+              className="w-full bg-white border border-dashed border-sky-300 rounded-xl p-4 flex items-center justify-center gap-3 hover:bg-sky-50 transition-colors group"
+            >
+               <div className="bg-sky-100 p-2 rounded-full text-sky-600 group-hover:bg-sky-200">
+                 <Sparkles className="w-5 h-5" />
+               </div>
+               <span className="font-semibold text-slate-700 group-hover:text-sky-700">{t.openProposalButton}</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-4 mb-4">
+             <div className="h-px bg-slate-200 flex-1"></div>
+             <span className="text-xs text-slate-400 font-medium uppercase tracking-widest">OR</span>
+             <div className="h-px bg-slate-200 flex-1"></div>
+          </div>
+
           {myBooks.length === 0 ? (
-            <div className="text-center py-12 flex flex-col items-center">
+            <div className="text-center py-8 flex flex-col items-center">
                <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mb-4">
                   <ArrowRightLeft className="w-8 h-8 text-slate-400" />
                </div>

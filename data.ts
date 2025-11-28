@@ -27,8 +27,8 @@ export const translations: Translations = {
     logout: "Sign Out",
     welcome: "Welcome",
     newArrivals: "Discover Stories",
-    freshlyShelved: "Freshly Shelved", // New
-    viewAll: "View All", // New
+    freshlyShelved: "Freshly Shelved", 
+    viewAll: "View All", 
     howItWorks: "The Journey",
     step1Title: "Release",
     step1Desc: "Let go of books you've loved.",
@@ -67,6 +67,9 @@ export const translations: Translations = {
     proposalSent: "Exchange Proposal Sent",
     proposalTitle: "Exchange Proposed",
     proposalDesc: "offered in exchange for",
+    openProposalDesc: "wants to browse your library to exchange for",
+    openProposalButton: "Let them choose from my library",
+    browseLibrary: "Browse Library",
     accept: "Accept",
     decline: "Decline",
     accepted: "Proposal Accepted",
@@ -134,8 +137,8 @@ export const translations: Translations = {
     logout: "로그아웃",
     welcome: "환영합니다",
     newArrivals: "새로운 이야기",
-    freshlyShelved: "방금 들어온 책", // New
-    viewAll: "전체 보기", // New
+    freshlyShelved: "방금 들어온 책",
+    viewAll: "전체 보기",
     howItWorks: "여정",
     step1Title: "비움",
     step1Desc: "다 읽은 책을 새로운 주인에게 보냅니다.",
@@ -174,6 +177,9 @@ export const translations: Translations = {
     proposalSent: "교환 제안이 전송되었습니다",
     proposalTitle: "교환 제안",
     proposalDesc: "을(를) 다음 책과 교환하고 싶어합니다:",
+    openProposalDesc: "님이 회원님의 서재에서 교환할 책을 고르고 싶어합니다:",
+    openProposalButton: "상대방이 내 서재에서 고르게 하기",
+    browseLibrary: "상대방 서재 둘러보기",
     accept: "수락",
     decline: "거절",
     accepted: "제안 수락됨",

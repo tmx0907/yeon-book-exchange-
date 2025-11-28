@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Camera, BookOpen, Loader2 } from 'lucide-react';
+
+import React, { useState, useRef } from 'react';
+import { Camera, BookOpen, Loader2, Upload } from 'lucide-react';
 import { translations } from '../data';
 import { Book } from '../types';
 
@@ -12,12 +13,30 @@ interface UploadBookProps {
 const UploadBook: React.FC<UploadBookProps> = ({ lang, onUpload, onCancel }) => {
   const t = translations[lang];
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [formData, setFormData] = useState({
     title: '',
     author: '',
     condition: 'New',
     category: 'Fiction'
   });
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +47,8 @@ const UploadBook: React.FC<UploadBookProps> = ({ lang, onUpload, onCancel }) => 
       onUpload({
         ...formData,
         condition: formData.condition as any,
-        imageUrl: `https://picsum.photos/seed/${Date.now()}/300/450` // Mock image
+        // Use uploaded image or fallback to a deterministic random image based on title
+        imageUrl: previewUrl || `https://picsum.photos/seed/${formData.title.replace(/\s/g, '')}/300/450`
       });
       setIsSubmitting(false);
     }, 1000);
@@ -44,11 +64,36 @@ const UploadBook: React.FC<UploadBookProps> = ({ lang, onUpload, onCancel }) => 
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200 border border-slate-50">
         <div className="space-y-8">
           
-          {/* Image Placeholder */}
+          {/* Image Upload Area */}
           <div className="flex justify-center">
-            <div className="w-32 h-44 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center text-slate-400 hover:border-sky-400 hover:bg-sky-50 transition-colors cursor-pointer group">
-               <Camera className="w-8 h-8 mb-2 group-hover:text-sky-500" />
-               <span className="text-xs font-medium group-hover:text-sky-600">Add Cover</span>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              accept="image/*" 
+              className="hidden" 
+            />
+            <div 
+              onClick={handleUploadClick}
+              className={`w-32 h-44 rounded-lg flex flex-col items-center justify-center cursor-pointer group transition-all duration-300 overflow-hidden relative ${
+                previewUrl 
+                  ? 'border-0' 
+                  : 'bg-slate-50 border-2 border-dashed border-slate-200 hover:border-sky-400 hover:bg-sky-50'
+              }`}
+            >
+               {previewUrl ? (
+                 <>
+                   <img src={previewUrl} alt="Cover Preview" className="w-full h-full object-cover" />
+                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Camera className="w-8 h-8 text-white" />
+                   </div>
+                 </>
+               ) : (
+                 <>
+                   <Camera className="w-8 h-8 mb-2 text-slate-400 group-hover:text-sky-500 transition-colors" />
+                   <span className="text-xs font-medium text-slate-400 group-hover:text-sky-600 transition-colors">Add Cover</span>
+                 </>
+               )}
             </div>
           </div>
 

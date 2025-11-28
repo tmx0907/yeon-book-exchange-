@@ -18,7 +18,7 @@ export interface Book {
   points: number;
   imageUrl: string;
   category: string;
-  status: 'Available' | 'Swapped'; // Added status
+  status: 'Available' | 'Swapped';
 }
 
 export interface User {
@@ -50,9 +50,11 @@ export interface ExchangeProposal {
   targetBookId: string;
   targetBookTitle: string;
   targetBookImage: string;
-  offeredBookId: string; 
-  offeredBookTitle: string;
-  offeredBookImage: string;
+  // If type is 'open', offeredBook details might be empty/placeholder
+  type: 'direct' | 'open'; 
+  offeredBookId?: string; 
+  offeredBookTitle?: string;
+  offeredBookImage?: string;
   status: 'pending' | 'accepted' | 'rejected';
 }
 

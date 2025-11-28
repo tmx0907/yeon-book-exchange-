@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Send, MoreVertical, Search, Phone, Video, ArrowRightLeft, Check, X } from 'lucide-react';
+import { Send, MoreVertical, Search, Phone, Video, ArrowRightLeft, Check, X, Library } from 'lucide-react';
 import { Chat, Message, Translations } from '../types';
 import { translations, mockChats } from '../data';
 
@@ -11,6 +11,7 @@ interface ChatInterfaceProps {
   onSendMessage: (chatId: string, text: string) => void;
   onAcceptProposal?: (chatId: string, messageId: string, proposalId: string) => void;
   onRejectProposal?: (chatId: string, messageId: string, proposalId: string) => void;
+  onBrowseLibrary?: (partnerId: string) => void;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
@@ -19,7 +20,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   chats, 
   onSendMessage,
   onAcceptProposal,
-  onRejectProposal
+  onRejectProposal,
+  onBrowseLibrary
 }) => {
   const [activeChatId, setActiveChatId] = useState<string>(initialChatId || (chats.length > 0 ? chats[0].id : ''));
   const [inputText, setInputText] = useState('');
@@ -142,42 +144,69 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                          {msg.proposal.status}
                        </span>
                     </div>
-                    <div className="flex items-center gap-3 mb-4">
-                       <img src={msg.proposal.offeredBookImage} className="w-12 h-16 object-cover rounded shadow-sm" alt="My Book"/>
-                       <div className="flex-1 text-center text-xs text-slate-400 px-2">
-                          <ArrowRightLeft className="w-4 h-4 mx-auto mb-1" />
+
+                    {msg.proposal.type === 'open' ? (
+                      // Open Proposal (Let partner choose)
+                       <div className="text-center py-2">
+                           <div className="flex justify-center mb-3">
+                              <div className="bg-sky-50 rounded-full p-3">
+                                 <Library className="w-6 h-6 text-sky-500" />
+                              </div>
+                           </div>
+                           <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+                              <span className="font-semibold text-slate-900">{msg.isMe ? 'You' : activeChat.partnerName}</span> {t.openProposalDesc} <span className="font-semibold text-slate-900">{msg.proposal.targetBookTitle}</span>
+                           </p>
+                           
+                           {!msg.isMe && msg.proposal.status === 'pending' && (
+                              <button 
+                                 onClick={() => onBrowseLibrary?.(activeChat.partnerId)}
+                                 className="w-full py-2.5 bg-sky-600 text-white rounded-lg text-sm font-semibold hover:bg-sky-700 transition-colors shadow-lg shadow-sky-100"
+                              >
+                                 {t.browseLibrary}
+                              </button>
+                           )}
                        </div>
-                       <img src={msg.proposal.targetBookImage} className="w-12 h-16 object-cover rounded shadow-sm" alt="Target Book"/>
-                    </div>
-                    <p className="text-sm text-slate-600 mb-4 leading-relaxed">
-                       <span className="font-semibold text-slate-900">{msg.proposal.offeredBookTitle}</span> {t.proposalDesc} <span className="font-semibold text-slate-900">{msg.proposal.targetBookTitle}</span>
-                    </p>
-                    
-                    {msg.proposal.status === 'pending' && !msg.isMe && (
-                      <div className="flex gap-2">
-                         <button 
-                            onClick={() => onAcceptProposal?.(activeChatId, msg.id, msg.proposal!.id)}
-                            className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors"
-                         >
-                             {t.accept}
-                         </button>
-                         <button 
-                            onClick={() => onRejectProposal?.(activeChatId, msg.id, msg.proposal!.id)}
-                            className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200 transition-colors"
-                         >
-                             {t.decline}
-                         </button>
-                      </div>
+                    ) : (
+                      // Direct Proposal (Specific book offered)
+                       <>
+                          <div className="flex items-center gap-3 mb-4">
+                             <img src={msg.proposal.offeredBookImage} className="w-12 h-16 object-cover rounded shadow-sm" alt="My Book"/>
+                             <div className="flex-1 text-center text-xs text-slate-400 px-2">
+                                <ArrowRightLeft className="w-4 h-4 mx-auto mb-1" />
+                             </div>
+                             <img src={msg.proposal.targetBookImage} className="w-12 h-16 object-cover rounded shadow-sm" alt="Target Book"/>
+                          </div>
+                          <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+                             <span className="font-semibold text-slate-900">{msg.proposal.offeredBookTitle}</span> {t.proposalDesc} <span className="font-semibold text-slate-900">{msg.proposal.targetBookTitle}</span>
+                          </p>
+                          
+                          {msg.proposal.status === 'pending' && !msg.isMe && (
+                            <div className="flex gap-2">
+                               <button 
+                                  onClick={() => onAcceptProposal?.(activeChatId, msg.id, msg.proposal!.id)}
+                                  className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-xs font-semibold hover:bg-emerald-600 transition-colors"
+                               >
+                                   {t.accept}
+                               </button>
+                               <button 
+                                  onClick={() => onRejectProposal?.(activeChatId, msg.id, msg.proposal!.id)}
+                                  className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200 transition-colors"
+                               >
+                                   {t.decline}
+                               </button>
+                            </div>
+                          )}
+                       </>
                     )}
                     
                     {msg.proposal.status === 'accepted' && (
-                       <div className="text-center text-emerald-600 text-xs font-bold uppercase tracking-wide py-2 bg-emerald-50 rounded-lg">
+                       <div className="text-center text-emerald-600 text-xs font-bold uppercase tracking-wide py-2 bg-emerald-50 rounded-lg mt-2">
                           {t.accepted}
                        </div>
                     )}
                     
                      {msg.proposal.status === 'rejected' && (
-                       <div className="text-center text-slate-400 text-xs font-bold uppercase tracking-wide py-2 bg-slate-50 rounded-lg">
+                       <div className="text-center text-slate-400 text-xs font-bold uppercase tracking-wide py-2 bg-slate-50 rounded-lg mt-2">
                           {t.rejected}
                        </div>
                     )}

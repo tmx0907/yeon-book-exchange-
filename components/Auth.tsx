@@ -1,15 +1,18 @@
 
 import React, { useState } from 'react';
-import { ArrowRight, Mail, Lock, User } from 'lucide-react';
+import { ArrowRight, Mail, Lock, User, Loader2, AlertCircle } from 'lucide-react';
 import { translations } from '../data';
+import { supabase } from '../lib/supabaseClient';
 
 interface AuthProps {
   lang: 'en' | 'ko';
-  onLogin: (userData?: { name: string; email: string }) => void;
+  onLogin: (userData?: any) => void;
 }
 
 const Auth: React.FC<AuthProps> = ({ lang, onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -18,32 +21,45 @@ const Auth: React.FC<AuthProps> = ({ lang, onLogin }) => {
   
   const t = translations[lang];
 
-  const deriveNameFromEmail = (email: string) => {
-    // Splits "john.doe@email.com" into "John Doe"
-    if (!email) return 'User';
-    const localPart = email.split('@')[0];
-    return localPart
-      .split(/[._]/)
-      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ');
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // If logging in, we simulate finding the user by deriving a name from the email
-    // If signing up, we use the provided name
-    const nameToUse = isLogin ? deriveNameFromEmail(formData.email) : formData.name;
-    
-    onLogin({ 
-      name: nameToUse, 
-      email: formData.email 
-    });
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (isLogin) {
+        // --- LOGIN ---
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (error) throw error;
+        // App.tsx handles the state update via onAuthStateChange
+      } else {
+        // --- SIGN UP ---
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              name: formData.name, // This is passed to the trigger we made in SQL
+            },
+          },
+        });
+
+        if (error) throw error;
+        alert("Account created! You are now logged in.");
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
-      {/* Background decoration */}
       <div className="absolute top-20 right-[20%] w-64 h-64 bg-sky-100/50 rounded-full blur-3xl -z-10"></div>
       <div className="absolute bottom-20 left-[20%] w-48 h-48 bg-slate-100/50 rounded-full blur-3xl -z-10"></div>
 
@@ -56,6 +72,13 @@ const Auth: React.FC<AuthProps> = ({ lang, onLogin }) => {
             {isLogin ? t.welcomeBackDesc : t.joinUsDesc}
           </p>
         </div>
+
+        {error && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            {error}
+          </div>
+        )}
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
@@ -107,13 +130,15 @@ const Auth: React.FC<AuthProps> = ({ lang, onLogin }) => {
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-4 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-slate-900 hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all duration-300 shadow-lg shadow-slate-200"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-4 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-slate-900 hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all duration-300 shadow-lg shadow-slate-200 disabled:opacity-70"
             >
-              <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                 {/* Icon if needed */}
-              </span>
-              {isLogin ? t.signIn : t.signUp}
-              <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                <>
+                  {isLogin ? t.signIn : t.signUp}
+                  <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </button>
           </div>
         </form>
