@@ -14,7 +14,23 @@ interface NavbarProps {
 
 const Navbar: React.FC<NavbarProps> = ({ lang, setLang, setView, isLoggedIn, onLogout }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
   const t = translations[lang];
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isDropdownOpen]);
 
   return (
     <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-50">
@@ -68,25 +84,41 @@ const Navbar: React.FC<NavbarProps> = ({ lang, setLang, setView, isLoggedIn, onL
             </button>
 
             {isLoggedIn ? (
-              <div className="relative group">
-                <button className="flex items-center gap-2 text-slate-900 hover:text-sky-600 transition-colors">
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center gap-2 text-slate-900 hover:text-sky-600 transition-colors"
+                  aria-label="User menu"
+                  aria-expanded={isDropdownOpen}
+                >
                   <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
                     <User className="h-5 w-5 text-slate-500" />
                   </div>
                 </button>
                 {/* Dropdown for profile/logout */}
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-2 border border-slate-100 hidden group-hover:block">
-                  <button onClick={() => setView('profile')} className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
-                    {t.profile}
-                  </button>
-                  <button onClick={() => setView('my-library')} className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
-                    {t.myLibrary}
-                  </button>
-                  <div className="border-t border-slate-100 my-1"></div>
-                  <button onClick={onLogout} className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
-                    {t.logout}
-                  </button>
-                </div>
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-2 border border-slate-100 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <button
+                      onClick={() => { setView('profile'); setIsDropdownOpen(false); }}
+                      className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      {t.profile}
+                    </button>
+                    <button
+                      onClick={() => { setView('my-library'); setIsDropdownOpen(false); }}
+                      className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      {t.myLibrary}
+                    </button>
+                    <div className="border-t border-slate-100 my-1"></div>
+                    <button
+                      onClick={() => { onLogout(); setIsDropdownOpen(false); }}
+                      className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      {t.logout}
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <button

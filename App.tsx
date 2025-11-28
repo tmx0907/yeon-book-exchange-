@@ -439,16 +439,31 @@ const App: React.FC = () => {
         </main>
       )}
 
-      {(view === 'profile' || view === 'my-library') && user && (
+      {(view === 'profile' || view === 'my-library') && (
         <main className="flex-grow w-full bg-slate-50/50">
-          <UserProfile
-            lang={lang}
-            user={user}
-            myBooks={myBooks}
-            history={exchangeHistory} // History needs proper fetching implementation in v2
-            onAddBook={() => setView('upload')}
-            onEdit={() => setIsEditingProfile(true)}
-          />
+          {user ? (
+            <UserProfile
+              lang={lang}
+              user={user}
+              myBooks={myBooks}
+              history={exchangeHistory}
+              onAddBook={() => setView('upload')}
+              onEdit={() => setIsEditingProfile(true)}
+            />
+          ) : (
+            <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+              <div className="bg-white rounded-3xl p-12 shadow-sm border border-slate-100">
+                <h2 className="font-serif text-2xl text-slate-900 mb-4">Please Sign In</h2>
+                <p className="text-slate-500 mb-6">You need to be logged in to view your profile.</p>
+                <button
+                  onClick={() => setView('login')}
+                  className="px-8 py-3 bg-slate-900 text-white rounded-xl hover:bg-sky-600 transition-colors font-medium"
+                >
+                  Go to Sign In
+                </button>
+              </div>
+            </div>
+          )}
         </main>
       )}
 
