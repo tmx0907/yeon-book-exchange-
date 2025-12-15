@@ -7,6 +7,8 @@ import SafetyBanner from './components/SafetyBanner';
 import StatsChart from './components/StatsChart';
 import ChatInterface from './components/ChatInterface';
 import Auth from './components/Auth';
+import PasswordResetRequest from './components/PasswordResetRequest';
+import PasswordReset from './components/PasswordReset';
 import Footer from './components/Footer';
 import UploadBook from './components/UploadBook';
 import ExchangeModal from './components/ExchangeModal';
@@ -39,11 +41,18 @@ const App: React.FC = () => {
     });
 
     // 2. Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Handle password recovery
+      if (event === 'PASSWORD_RECOVERY') {
+        setView('reset-password');
+      }
+
       if (session) {
         setIsLoggedIn(true);
         fetchUserProfile(session.user.id);
         fetchUserChats(session.user.id);
+        // Redirect to home if user was on login/reset pages
+        setView(prevView => ['login', 'forgot-password', 'reset-password'].includes(prevView) ? 'home' : prevView);
       } else {
         setIsLoggedIn(false);
         setUser(null);
@@ -423,7 +432,33 @@ const App: React.FC = () => {
 
       {view === 'login' && (
         <main className="flex-grow w-full">
-          <Auth lang={lang} onLogin={() => { }} />
+          <Auth
+            lang={lang}
+            onLogin={() => { }}
+            onForgotPassword={() => setView('forgot-password')}
+          />
+        </main>
+      )}
+
+      {view === 'forgot-password' && (
+        <main className="flex-grow w-full">
+          <PasswordResetRequest
+            lang={lang}
+            onBack={() => setView('login')}
+          />
+        </main>
+      )}
+
+      {view === 'reset-password' && (
+        <main className="flex-grow w-full">
+          <PasswordReset
+            lang={lang}
+            onBack={() => setView('login')}
+            onSuccess={() => {
+              setView('login');
+              // Could add a success message here
+            }}
+          />
         </main>
       )}
 
