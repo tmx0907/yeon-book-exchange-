@@ -13,9 +13,10 @@ interface UserProfileProps {
    onAddBook: () => void;
    onEdit: () => void;
    onDeleteBook: (book: Book) => void;
+   onViewExchanges?: () => void;
 }
 
-const UserProfile: React.FC<UserProfileProps> = ({ lang, user, myBooks, history, onAddBook, onEdit, onDeleteBook }) => {
+const UserProfile: React.FC<UserProfileProps> = ({ lang, user, myBooks, history, onAddBook, onEdit, onDeleteBook, onViewExchanges }) => {
    const t = translations[lang];
    const [activeTab, setActiveTab] = useState<'library' | 'history' | 'discussions'>('library');
 
@@ -54,6 +55,15 @@ const UserProfile: React.FC<UserProfileProps> = ({ lang, user, myBooks, history,
                   </div>
 
                   <div className="flex gap-3">
+                     {onViewExchanges && (
+                        <button
+                           onClick={onViewExchanges}
+                           className="px-6 py-2.5 bg-purple-600 text-white rounded-xl font-medium text-sm hover:bg-purple-700 transition-colors flex items-center gap-2"
+                        >
+                           <Repeat className="w-4 h-4" />
+                           {lang === 'ko' ? '교환 제안' : 'My Exchanges'}
+                        </button>
+                     )}
                      <button
                         onClick={onEdit}
                         className="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-medium text-sm hover:bg-slate-200 transition-colors"

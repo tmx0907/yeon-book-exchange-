@@ -33,7 +33,7 @@ export interface User {
   rating: number; // 0-5
   joinDate: string;
   avatarUrl: string;
-  favoriteQuote?: string; 
+  favoriteQuote?: string;
 }
 
 export interface Discussion {
@@ -46,16 +46,39 @@ export interface Discussion {
 }
 
 export interface ExchangeProposal {
-  id: string; 
-  targetBookId: string;
-  targetBookTitle: string;
-  targetBookImage: string;
-  // If type is 'open', offeredBook details might be empty/placeholder
-  type: 'direct' | 'open'; 
-  offeredBookId?: string; 
-  offeredBookTitle?: string;
-  offeredBookImage?: string;
-  status: 'pending' | 'accepted' | 'rejected';
+  id: string;
+
+  // 👥 People
+  requester_id: string;
+  requester_name: string;
+  receiver_id: string;
+  receiver_name: string;
+
+  // 📚 Books
+  requested_book_id: string;
+  requested_book_title: string;
+  offered_book_id: string;
+  offered_book_title: string;
+
+  // 📊 Status
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'completed';
+
+  // 💬 Messages
+  message?: string;
+  decline_reason?: string;
+
+  // ⏰ Timestamps
+  created_at: string;
+  responded_at?: string;
+  completed_at?: string;
+
+  // 🔔 Notifications
+  notification_read: boolean;
+  email_sent: boolean;
+
+  // 📍 Meeting (optional)
+  meeting_location?: string;
+  meeting_time?: string;
 }
 
 export interface ExchangeTransaction {
@@ -75,7 +98,7 @@ export interface Message {
   text: string;
   timestamp: string;
   isMe: boolean;
-  proposal?: ExchangeProposal; 
+  proposal?: ExchangeProposal;
 }
 
 export interface Chat {

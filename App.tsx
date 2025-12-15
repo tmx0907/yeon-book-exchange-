@@ -16,6 +16,7 @@ import UserProfile from './components/UserProfile';
 import EditProfileModal from './components/EditProfileModal';
 import LegalDocs from './components/LegalDocs';
 import CommunityMain from './components/Community/CommunityMain';
+import MyExchanges from './components/MyExchanges';
 import { Language, Book, Chat, Message, User, ExchangeTransaction, ExchangeProposal } from './types';
 import { translations, mockBooks, mockExchanges } from './data';
 import { ArrowRight } from 'lucide-react';
@@ -253,6 +254,140 @@ const App: React.FC = () => {
     }
   };
 
+  // ============================================
+  // 📤 EXCHANGE PROPOSAL FUNCTIONS
+  // ============================================
+
+  const handleSendExchangeProposal = async (
+    requestedBook: Book,
+    offeredBook: Book,
+    message?: string
+  ) => {
+    if (!user) {
+      alert(lang === 'ko' ? '로그인이 필요합니다.' : 'Please login first.');
+      setView('login');
+      return;
+    }
+
+    // Prevent proposing to yourself
+    if (requestedBook.ownerId === user.id) {
+      alert(lang === 'ko'
+        ? '자신의 책에는 제안할 수 없습니다.'
+        : 'You cannot propose an exchange for your own book.');
+      return;
+    }
+
+    try {
+      const proposal = {
+        requester_id: user.id,
+        requester_name: user.name,
+        receiver_id: requestedBook.ownerId,
+        receiver_name: requestedBook.ownerName,
+        requested_book_id: requestedBook.id,
+        requested_book_title: requestedBook.title,
+        offered_book_id: offeredBook.id,
+        offered_book_title: offeredBook.title,
+        status: 'pending' as const,
+        message: message || null,
+        notification_read: false,
+        email_sent: false,
+        created_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('exchange_proposals')
+        .insert([proposal]);
+
+      if (error) {
+        console.error('Error sending proposal:', error);
+        alert(lang === 'ko'
+          ? '제안 전송에 실패했습니다.'
+          : 'Failed to send proposal.');
+      } else {
+        alert(lang === 'ko'
+          ? '교환 제안이 전송되었습니다!'
+          : 'Exchange proposal sent successfully!');
+        setView('home');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert(lang === 'ko' ? '오류가 발생했습니다.' : 'An error occurred.');
+    }
+  };
+
+  const handleAcceptProposal = async (proposalId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('exchange_proposals')
+        .update({
+          status: 'accepted',
+          responded_at: new Date().toISOString()
+        })
+        .eq('id', proposalId)
+        .eq('receiver_id', user.id);
+
+      if (error) {
+        console.error('Error:', error);
+        alert(lang === 'ko' ? '제안 수락에 실패했습니다.' : 'Failed to accept proposal.');
+      } else {
+        alert(lang === 'ko' ? '제안을 수락했습니다!' : 'Proposal accepted!');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const handleDeclineProposal = async (proposalId: string, reason?: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('exchange_proposals')
+        .update({
+          status: 'declined',
+          decline_reason: reason || null,
+          responded_at: new Date().toISOString()
+        })
+        .eq('id', proposalId)
+        .eq('receiver_id', user.id);
+
+      if (error) {
+        console.error('Error:', error);
+        alert(lang === 'ko' ? '제안 거절에 실패했습니다.' : 'Failed to decline proposal.');
+      } else {
+        alert(lang === 'ko' ? '제안을 거절했습니다.' : 'Proposal declined.');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const handleCancelProposal = async (proposalId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('exchange_proposals')
+        .update({
+          status: 'cancelled',
+          responded_at: new Date().toISOString()
+        })
+        .eq('id', proposalId)
+        .eq('requester_id', user.id);
+
+      if (error) {
+        console.error('Error:', error);
+        alert(lang === 'ko' ? '제안 취소에 실패했습니다.' : 'Failed to cancel proposal.');
+      } else {
+        alert(lang === 'ko' ? '제안을 취소했습니다.' : 'Proposal cancelled.');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
   const handleSendMessage = async (chatId: string, text: string) => {
     if (!user) return;
 
@@ -300,9 +435,9 @@ const App: React.FC = () => {
       chatId = newChat.id;
     }
 
-    // 2. Create Proposal Data
+    // 2. Create Proposal Data (Legacy format for chat messages)
     const isOpenProposal = offeredBook === 'OPEN';
-    const proposalData: ExchangeProposal = {
+    const proposalData: any = {
       id: Date.now().toString(),
       targetBookId: exchangeTarget.id,
       targetBookTitle: exchangeTarget.title,
@@ -362,8 +497,8 @@ const App: React.FC = () => {
     setIsEditingProfile(false);
   };
 
-  // NOTE: Simple version of proposal acceptance (Database update)
-  const handleAcceptProposal = async (chatId: string, messageId: string, proposalId: string) => {
+  // NOTE: Simple version of proposal acceptance via chat (Legacy - to be migrated)
+  const handleAcceptChatProposal = async (chatId: string, messageId: string, proposalId: string) => {
     // For this MVP, we need to update the message JSONB. 
     // Fetch the message first to get data? No, we have it in state.
     const chat = chats.find(c => c.id === chatId);
@@ -376,9 +511,15 @@ const App: React.FC = () => {
       }).eq('id', messageId);
 
       // Mark books as swapped
-      await supabase.from('books').update({ status: 'Swapped' }).eq('id', newProposal.targetBookId);
-      if (newProposal.offeredBookId) {
-        await supabase.from('books').update({ status: 'Swapped' }).eq('id', newProposal.offeredBookId);
+      // Note: Using old field names for backward compatibility
+      const bookId = (newProposal as any).targetBookId || (newProposal as any).requested_book_id;
+      const offeredId = (newProposal as any).offeredBookId || (newProposal as any).offered_book_id;
+
+      if (bookId) {
+        await supabase.from('books').update({ status: 'Swapped' }).eq('id', bookId);
+      }
+      if (offeredId) {
+        await supabase.from('books').update({ status: 'Swapped' }).eq('id', offeredId);
       }
 
       // Refresh
@@ -504,6 +645,7 @@ const App: React.FC = () => {
               onAddBook={() => setView('upload')}
               onEdit={() => setIsEditingProfile(true)}
               onDeleteBook={handleDeleteBook}
+              onViewExchanges={() => setView('my-exchanges')}
             />
           ) : (
             <div className="max-w-2xl mx-auto px-4 py-20 text-center">
@@ -515,6 +657,39 @@ const App: React.FC = () => {
                   className="px-8 py-3 bg-slate-900 text-white rounded-xl hover:bg-sky-600 transition-colors font-medium"
                 >
                   Go to Sign In
+                </button>
+              </div>
+            </div>
+          )}
+        </main>
+      )}
+
+      {view === 'my-exchanges' && (
+        <main className="flex-grow w-full bg-slate-50/50 py-12">
+          {user ? (
+            <MyExchanges
+              lang={lang}
+              userId={user.id}
+              onAcceptProposal={handleAcceptProposal}
+              onDeclineProposal={handleDeclineProposal}
+              onCancelProposal={handleCancelProposal}
+            />
+          ) : (
+            <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+              <div className="bg-white rounded-3xl p-12 shadow-sm border border-slate-100">
+                <h2 className="font-serif text-2xl text-slate-900 mb-4">
+                  {lang === 'ko' ? '로그인이 필요합니다' : 'Please Sign In'}
+                </h2>
+                <p className="text-slate-500 mb-6">
+                  {lang === 'ko'
+                    ? '교환 제안을 보려면 로그인하세요.'
+                    : 'You need to be logged in to view exchange proposals.'}
+                </p>
+                <button
+                  onClick={() => setView('login')}
+                  className="px-8 py-3 bg-slate-900 text-white rounded-xl hover:bg-sky-600 transition-colors font-medium"
+                >
+                  {lang === 'ko' ? '로그인하기' : 'Go to Sign In'}
                 </button>
               </div>
             </div>
@@ -535,7 +710,7 @@ const App: React.FC = () => {
             chats={chats}
             initialChatId={activeChatId}
             onSendMessage={handleSendMessage}
-            onAcceptProposal={handleAcceptProposal}
+            onAcceptProposal={handleAcceptChatProposal}
             onRejectProposal={() => { }} // Implement similar to accept
             onBrowseLibrary={() => setView('search')}
           />

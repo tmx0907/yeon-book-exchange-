@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Auth Test</title>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+    
+    const supabaseUrl = 'https://snyfhftwyqcnqplbkcnw.supabase.co'
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNueWZoZnR3eXFjbnFwbGJrY253Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzMDA5MDEsImV4cCI6MjA3OTg3NjkwMX0.-c3SvvDBBOICu18IXdLXS-TUWhMLtypheA3F7Czc-jk'
+    
+    const supabase = createClient(supabaseUrl, supabaseKey)
+    
+    async function testSignup() {
+      const result = document.getElementById('result')
+      result.innerHTML = 'Testing signup...'
+      
+      const { data, error } = await supabase.auth.signUp({
+        email: 'testuser@example.com',
+        password: 'TestPass123!',
+        options: {
+          data: {
+            name: 'Test User'
+          }
+        }
+      })
+      
+      if (error) {
+        result.innerHTML = `<pre>Error: ${JSON.stringify(error, null, 2)}</pre>`
+      } else {
+        result.innerHTML = `<pre>Success: ${JSON.stringify(data, null, 2)}</pre>`
+      }
+    }
+    
+    window.testSignup = testSignup
+  </script>
+</head>
+<body>
+  <h1>Supabase Auth Test</h1>
+  <button onclick="testSignup()">Test Signup</button>
+  <div id="result"></div>
+</body>
+</html>

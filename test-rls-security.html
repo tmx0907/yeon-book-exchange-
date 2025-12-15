@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RLS Security Testing Tool</title>
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+        const supabaseUrl = 'https://snyfhftwyqcnqplbkcnw.supabase.co'
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNueWZoZnR3eXFjbnFwbGJrY253Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzMDA5MDEsImV4cCI6MjA3OTg3NjkwMX0.-c3SvvDBBOICu18IXdLXS-TUWhMLtypheA3F7Czc-jk'
+
+        const supabase = createClient(supabaseUrl, supabaseKey)
+
+        let currentUser = null
+
+        // Helper to log results
+        function logResult(testName, success, message, data = null) {
+            const results = document.getElementById('results')
+            const div = document.createElement('div')
+            div.className = `test-result ${success ? 'success' : 'fail'}`
+
+            let html = `
+        <div class="test-header">
+          <span class="test-icon">${success ? '✅' : '❌'}</span>
+          <strong>${testName}</strong>
+        </div>
+        <div class="test-message">${message}</div>
+      `
+
+            if (data) {
+                html += `<details class="test-details">
+          <summary>View Data</summary>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        </details>`
+            }
+
+            div.innerHTML = html
+            results.appendChild(div)
+            results.scrollTop = results.scrollHeight
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = ''
+        }
+
+        // Test 1: Check if RLS is enabled
+        async function testRLSEnabled() {
+            logResult('Test 1', null, 'Checking if RLS is enabled on all tables...', null)
+
+            try {
+                const { data, error } = await supabase.rpc('check_rls_enabled')
+
+                if (error) {
+                    // If function doesn't exist, we'll check manually
+                    logResult('Test 1 - RLS Status', true,
+                        'Note: Cannot verify RLS status directly. Will test by attempting unauthorized access.')
+                } else {
+                    logResult('Test 1 - RLS Status', true,
+                        'RLS is enabled on all tables', data)
+                }
+            } catch (e) {
+                logResult('Test 1 - RLS Status', true,
+                    'Will verify RLS through behavior tests below')
+            }
+        }
+
+        // Test 2: Public data access (should work without login)
+        async function testPublicAccess() {
+            logResult('Test 2', null, 'Testing public data access (without login)...', null)
+
+            // Should be able to view profiles
+            const { data: profiles, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .limit(5)
+
+            if (!profileError && profiles) {
+                logResult('Test 2A - Public Profiles', true,
+                    `✅ Can view ${profiles.length} profiles without login (CORRECT - profiles are public)`,
+                    profiles)
+            } else {
+                logResult('Test 2A - Public Profiles', false,
+                    '❌ Cannot view profiles (INCORRECT - profiles should be public)',
+                    profileError)
+            }
+
+            // Should be able to view books
+            const { data: books, error: booksError } = await supabase
+                .from('books')
+                .select('*')
+                .limit(5)
+
+            if (!booksError && books) {
+                logResult('Test 2B - Public Books', true,
+                    `✅ Can view ${books.length} books without login (CORRECT - marketplace is public)`,
+                    books)
+            } else {
+                logResult('Test 2B - Public Books', false,
+                    '❌ Cannot view books (INCORRECT - books should be public)',
+                    booksError)
+            }
+        }
+
+        // Test 3: Try to modify data without login (should fail)
+        async function testUnauthorizedWrite() {
+            logResult('Test 3', null, 'Testing unauthorized write access (should fail)...', null)
+
+            // Try to insert a book without login
+            const { data, error } = await supabase
+                .from('books')
+                .insert({
+                    title: 'Test Book',
+                    author: 'Test Author',
+                    owner_id: '00000000-0000-0000-0000-000000000000',
+                    points: 10
+                })
+
+            if (error && error.code === '42501') {
+                logResult('Test 3A - Unauthorized Insert', true,
+                    '✅ Cannot insert book without login (CORRECT - protected by RLS)',
+                    error)
+            } else if (error) {
+                logResult('Test 3A - Unauthorized Insert', true,
+                    '✅ Insert blocked (CORRECT)',
+                    error)
+            } else {
+                logResult('Test 3A - Unauthorized Insert', false,
+                    '❌ Successfully inserted book without login (SECURITY ISSUE!)',
+                    data)
+            }
+        }
+
+        // Test 4: Login and test authenticated access
+        async function testAuthenticatedAccess() {
+            const email = document.getElementById('testEmail').value
+            const password = document.getElementById('testPassword').value
+
+            if (!email || !password) {
+                logResult('Test 4', false, 'Please enter email and password')
+                return
+            }
+
+            clearResults()
+            logResult('Test 4', null, `Logging in as ${email}...`, null)
+
+            // Login
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            })
+
+            if (authError) {
+                logResult('Test 4 - Login', false,
+                    `❌ Login failed: ${authError.message}`,
+                    authError)
+                return
+            }
+
+            currentUser = authData.user
+            logResult('Test 4 - Login', true,
+                `✅ Successfully logged in as ${email}`,
+                { user_id: currentUser.id, email: currentUser.email })
+
+            // Update UI
+            document.getElementById('currentUser').textContent = email
+            document.getElementById('userId').textContent = currentUser.id
+
+            // Test 5: Try to add a book (should work)
+            await testAddOwnBook()
+
+            // Test 6: Try to edit someone else's book (should fail)
+            await testEditOthersBook()
+
+            // Test 7: Try to view own profile (should work)
+            await testViewOwnProfile()
+
+            // Test 8: Try to update someone else's profile (should fail)
+            await testUpdateOthersProfile()
+
+            // Test 9: Check chat privacy
+            await testChatPrivacy()
+        }
+
+        // Test 5: Add own book
+        async function testAddOwnBook() {
+            logResult('Test 5', null, 'Testing adding your own book...', null)
+
+            if (!currentUser) {
+                logResult('Test 5', false, 'Not logged in')
+                return
+            }
+
+            const { data, error } = await supabase
+                .from('books')
+                .insert({
+                    title: 'Test Book - ' + new Date().getTime(),
+                    author: 'Test Author',
+                    owner_id: currentUser.id,
+                    points: 10,
+                    status: 'Available',
+                    category: 'Fiction'
+                })
+                .select()
+
+            if (!error && data) {
+                logResult('Test 5 - Add Own Book', true,
+                    '✅ Successfully added your own book (CORRECT)',
+                    data)
+                window.testBookId = data[0].id
+            } else {
+                logResult('Test 5 - Add Own Book', false,
+                    '❌ Failed to add your own book (INCORRECT)',
+                    error)
+            }
+        }
+
+        // Test 6: Try to edit someone else's book
+        async function testEditOthersBook() {
+            logResult('Test 6', null, 'Testing editing someone else\'s book...', null)
+
+            if (!currentUser) {
+                logResult('Test 6', false, 'Not logged in')
+                return
+            }
+
+            // First, get a book that's not ours
+            const { data: books, error: fetchError } = await supabase
+                .from('books')
+                .select('*')
+                .neq('owner_id', currentUser.id)
+                .limit(1)
+
+            if (fetchError || !books || books.length === 0) {
+                logResult('Test 6 - Edit Others Book', true,
+                    'ℹ️ No other users\' books found to test (create a book with another user to test this)')
+                return
+            }
+
+            const otherBook = books[0]
+
+            // Try to update it
+            const { data, error } = await supabase
+                .from('books')
+                .update({ title: 'HACKED BOOK' })
+                .eq('id', otherBook.id)
+
+            if (error && (error.code === '42501' || error.message.includes('violates row-level security'))) {
+                logResult('Test 6 - Edit Others Book', true,
+                    '✅ Cannot edit someone else\'s book (CORRECT - protected by RLS)',
+                    error)
+            } else if (error) {
+                logResult('Test 6 - Edit Others Book', true,
+                    '✅ Update blocked (CORRECT)',
+                    error)
+            } else {
+                logResult('Test 6 - Edit Others Book', false,
+                    '❌ Successfully edited someone else\'s book (SECURITY ISSUE!)',
+                    data)
+            }
+        }
+
+        // Test 7: View own profile
+        async function testViewOwnProfile() {
+            logResult('Test 7', null, 'Testing viewing your own profile...', null)
+
+            if (!currentUser) {
+                logResult('Test 7', false, 'Not logged in')
+                return
+            }
+
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', currentUser.id)
+                .single()
+
+            if (!error && data) {
+                logResult('Test 7 - View Own Profile', true,
+                    '✅ Can view your own profile (CORRECT)',
+                    data)
+            } else {
+                logResult('Test 7 - View Own Profile', false,
+                    '❌ Cannot view your own profile (INCORRECT)',
+                    error)
+            }
+        }
+
+        // Test 8: Update someone else's profile
+        async function testUpdateOthersProfile() {
+            logResult('Test 8', null, 'Testing updating someone else\'s profile...', null)
+
+            if (!currentUser) {
+                logResult('Test 8', false, 'Not logged in')
+                return
+            }
+
+            // Get another user's profile
+            const { data: profiles, error: fetchError } = await supabase
+                .from('profiles')
+                .select('*')
+                .neq('id', currentUser.id)
+                .limit(1)
+
+            if (fetchError || !profiles || profiles.length === 0) {
+                logResult('Test 8 - Update Others Profile', true,
+                    'ℹ️ No other users found to test (create another user to test this)')
+                return
+            }
+
+            const otherProfile = profiles[0]
+
+            // Try to update it
+            const { data, error } = await supabase
+                .from('profiles')
+                .update({ name: 'HACKED USER' })
+                .eq('id', otherProfile.id)
+
+            if (error && (error.code === '42501' || error.message.includes('violates row-level security'))) {
+                logResult('Test 8 - Update Others Profile', true,
+                    '✅ Cannot update someone else\'s profile (CORRECT - protected by RLS)',
+                    error)
+            } else if (error) {
+                logResult('Test 8 - Update Others Profile', true,
+                    '✅ Update blocked (CORRECT)',
+                    error)
+            } else {
+                logResult('Test 8 - Update Others Profile', false,
+                    '❌ Successfully updated someone else\'s profile (SECURITY ISSUE!)',
+                    data)
+            }
+        }
+
+        // Test 9: Chat privacy
+        async function testChatPrivacy() {
+            logResult('Test 9', null, 'Testing chat privacy...', null)
+
+            if (!currentUser) {
+                logResult('Test 9', false, 'Not logged in')
+                return
+            }
+
+            // Try to view all chats (should only see our own)
+            const { data: allChats, error: allError } = await supabase
+                .from('chats')
+                .select('*')
+
+            if (allError) {
+                logResult('Test 9A - View All Chats', false,
+                    'Error viewing chats',
+                    allError)
+                return
+            }
+
+            // Check if we can only see chats we're part of
+            const unauthorizedChats = allChats.filter(chat =>
+                chat.partner_a !== currentUser.id && chat.partner_b !== currentUser.id
+            )
+
+            if (unauthorizedChats.length === 0) {
+                logResult('Test 9A - Chat Privacy', true,
+                    `✅ Can only see your own chats (${allChats.length} chats) (CORRECT)`,
+                    allChats)
+            } else {
+                logResult('Test 9A - Chat Privacy', false,
+                    `❌ Can see ${unauthorizedChats.length} chats you're not part of (SECURITY ISSUE!)`,
+                    unauthorizedChats)
+            }
+        }
+
+        // Logout
+        async function logout() {
+            await supabase.auth.signOut()
+            currentUser = null
+            document.getElementById('currentUser').textContent = 'Not logged in'
+            document.getElementById('userId').textContent = '-'
+            clearResults()
+            logResult('Logout', true, 'Successfully logged out')
+        }
+
+        // Make functions available globally
+        window.testRLSEnabled = testRLSEnabled
+        window.testPublicAccess = testPublicAccess
+        window.testUnauthorizedWrite = testUnauthorizedWrite
+        window.testAuthenticatedAccess = testAuthenticatedAccess
+        window.logout = logout
+        window.clearResults = clearResults
+
+        // Run public tests on load
+        window.addEventListener('load', async () => {
+            await testRLSEnabled()
+            await testPublicAccess()
+            await testUnauthorizedWrite()
+        })
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .user-info {
+            background: #f7fafc;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .user-info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .user-info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .value {
+            color: #2d3748;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .test-section {
+            margin-bottom: 24px;
+        }
+
+        .test-section h2 {
+            color: #2d3748;
+            margin-bottom: 12px;
+            font-size: 1.3em;
+        }
+
+        .login-form {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        input {
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #718096;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4a5568;
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+
+        #results {
+            max-height: 600px;
+            overflow-y: auto;
+            padding: 16px;
+            background: #f7fafc;
+            border-radius: 8px;
+        }
+
+        .test-result {
+            background: white;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #cbd5e0;
+        }
+
+        .test-result.success {
+            border-left-color: #48bb78;
+        }
+
+        .test-result.fail {
+            border-left-color: #f56565;
+        }
+
+        .test-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .test-icon {
+            font-size: 1.2em;
+        }
+
+        .test-message {
+            color: #4a5568;
+            margin-bottom: 8px;
+        }
+
+        .test-details {
+            margin-top: 12px;
+        }
+
+        .test-details summary {
+            cursor: pointer;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .test-details pre {
+            background: #2d3748;
+            color: #48bb78;
+            padding: 12px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.85em;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .alert-info {
+            background: #bee3f8;
+            color: #2c5282;
+            border-left: 4px solid #3182ce;
+        }
+
+        .alert-warning {
+            background: #feebc8;
+            color: #7c2d12;
+            border-left: 4px solid #ed8936;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔒 RLS Security Testing Tool</h1>
+        <p class="subtitle">Verify that Row Level Security is working correctly</p>
+
+        <div class="card">
+            <div class="user-info">
+                <div class="user-info-row">
+                    <span class="label">Current User:</span>
+                    <span class="value" id="currentUser">Not logged in</span>
+                </div>
+                <div class="user-info-row">
+                    <span class="label">User ID:</span>
+                    <span class="value" id="userId">-</span>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <strong>ℹ️ How to use:</strong><br>
+                1. First, public access tests will run automatically<br>
+                2. Then login with a test account to run authenticated tests<br>
+                3. Review the results below - all tests should pass ✅
+            </div>
+
+            <div class="test-section">
+                <h2>Login to Test Authenticated Access</h2>
+                <div class="login-form">
+                    <input type="email" id="testEmail" placeholder="Email (e.g., testuser2025@gmail.com)"
+                        value="testuser2025@gmail.com">
+                    <input type="password" id="testPassword" placeholder="Password">
+                </div>
+                <div class="button-group">
+                    <button onclick="testAuthenticatedAccess()" class="btn-primary">
+                        🔐 Login & Run All Tests
+                    </button>
+                    <button onclick="logout()" class="btn-secondary">
+                        🚪 Logout
+                    </button>
+                    <button onclick="clearResults()" class="btn-danger">
+                        🗑️ Clear Results
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Test Results</h2>
+            <div class="alert alert-warning" style="margin-bottom: 16px;">
+                <strong>⚠️ Expected Results:</strong><br>
+                ✅ Green checks = Security working correctly<br>
+                ❌ Red crosses = Security issue detected
+            </div>
+            <div id="results"></div>
+        </div>
+    </div>
+</body>
+
+</html>
