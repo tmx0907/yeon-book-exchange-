@@ -234,6 +234,25 @@ const App: React.FC = () => {
     setView('profile');
   };
 
+  const handleDeleteBook = async (book: Book) => {
+    if (!user) return;
+
+    // Delete the book from Supabase
+    const { error } = await supabase
+      .from('books')
+      .delete()
+      .eq('id', book.id)
+      .eq('owner_id', user.id); // Ensure only owner can delete
+
+    if (error) {
+      console.error('Error deleting book:', error);
+      alert(lang === 'ko' ? '책 삭제에 실패했습니다.' : 'Failed to delete book.');
+    } else {
+      // Realtime will auto-update the list
+      console.log('Book deleted successfully');
+    }
+  };
+
   const handleSendMessage = async (chatId: string, text: string) => {
     if (!user) return;
 
@@ -484,6 +503,7 @@ const App: React.FC = () => {
               history={exchangeHistory}
               onAddBook={() => setView('upload')}
               onEdit={() => setIsEditingProfile(true)}
+              onDeleteBook={handleDeleteBook}
             />
           ) : (
             <div className="max-w-2xl mx-auto px-4 py-20 text-center">
