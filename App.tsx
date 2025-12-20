@@ -45,11 +45,28 @@ const App: React.FC = () => {
 
     // 1. Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      // FIX: Ensure session is valid before fetching profile
       if (session && session.user) {
-        fetchUserProfile(session.user);
+        // CRITICAL: Set user IMMEDIATELY from session data
+        const authUser = session.user;
+        setUser({
+          id: authUser.id,
+          name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Member',
+          email: authUser.email || '',
+          state: 'NSW',
+          suburb: '',
+          points: 0,
+          booksRead: 0,
+          exchangesCompleted: 0,
+          rating: 5.0,
+          joinDate: new Date().toISOString(),
+          avatarUrl: authUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User')}`,
+          favoriteQuote: ''
+        });
+        setIsLoggedIn(true);
+        // Then enhance with full profile (async)
+        fetchUserProfile(authUser);
       } else {
-        loadPublicData(); // Load books even if not logged in
+        loadPublicData();
       }
     }).catch(err => {
       console.error("Session check failed:", err);
@@ -71,9 +88,29 @@ const App: React.FC = () => {
         return;
       }
 
-      if (session) {
+      if (session && session.user) {
+        // CRITICAL: Set user IMMEDIATELY from session data
+        // This ensures user is NEVER null when isLoggedIn is true
+        const authUser = session.user;
+        setUser({
+          id: authUser.id,
+          name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Member',
+          email: authUser.email || '',
+          state: 'NSW',
+          suburb: '',
+          points: 0,
+          booksRead: 0,
+          exchangesCompleted: 0,
+          rating: 5.0,
+          joinDate: new Date().toISOString(),
+          avatarUrl: authUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User')}`,
+          favoriteQuote: ''
+        });
         setIsLoggedIn(true);
-        fetchUserProfile(session.user); // Now includes chats & books in parallel
+
+        // Then try to enhance with full profile data (async, non-blocking)
+        fetchUserProfile(authUser);
+
         // Redirect to home if user was on login/reset pages
         setView(prevView => ['login', 'forgot-password', 'reset-password'].includes(prevView) ? 'home' : prevView);
       } else {
