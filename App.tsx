@@ -97,6 +97,8 @@ const App: React.FC = () => {
           favoriteQuote: ''
         });
         setIsLoggedIn(true);
+        // Load books immediately (parallel with profile)
+        loadPublicData();
         // Then enhance with full profile (async)
         fetchUserProfile(authUser);
       } else {
@@ -142,6 +144,8 @@ const App: React.FC = () => {
         });
         setIsLoggedIn(true);
 
+        // Load books immediately (parallel with profile)
+        loadPublicData();
         // Then try to enhance with full profile data (async, non-blocking)
         fetchUserProfile(authUser);
 
