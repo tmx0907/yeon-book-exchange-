@@ -21,11 +21,15 @@ import { Language, Book, Chat, Message, User, ExchangeTransaction, ExchangePropo
 import { translations, mockBooks, mockExchanges } from './data';
 import { ArrowRight, AlertCircle, X } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
-import { useAuth, useBooks } from './hooks';
+import { useAuth, useBooks, useRouter } from './hooks';
 
 const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('en');
-  const [view, setView] = useState('home');
+
+  // ========================================
+  // 🛣️ ROUTER HOOK - URL-based navigation
+  // ========================================
+  const { view, setView } = useRouter();
 
   // ========================================
   // 🔐 AUTH HOOK - Handles all authentication
