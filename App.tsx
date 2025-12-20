@@ -37,7 +37,7 @@ const App: React.FC = () => {
   useEffect(() => {
     // 1. Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) fetchUserProfile(session.user.id);
+      if (session) fetchUserProfile(session.user);
       else loadPublicData(); // Load books even if not logged in
     });
 
@@ -50,7 +50,7 @@ const App: React.FC = () => {
 
       if (session) {
         setIsLoggedIn(true);
-        fetchUserProfile(session.user.id); // Now includes chats & books in parallel
+        fetchUserProfile(session.user); // Now includes chats & books in parallel
         // Redirect to home if user was on login/reset pages
         setView(prevView => ['login', 'forgot-password', 'reset-password'].includes(prevView) ? 'home' : prevView);
       } else {
@@ -78,7 +78,8 @@ const App: React.FC = () => {
 
   // --- FETCHING FUNCTIONS (OPTIMIZED FOR SPEED) ---
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (authUser: any) => {
+    const userId = authUser.id;
     // ⚡ PARALLEL EXECUTION: 2-3x faster!
     const [profileResult, chatsResult, publicDataResult] = await Promise.all([
       // 1. Fetch user profile
@@ -122,6 +123,25 @@ const App: React.FC = () => {
         joinDate: data.join_date || 'Recently',
         avatarUrl: data.avatar_url,
         favoriteQuote: data.favorite_quote
+      });
+      setIsLoggedIn(true);
+    } else {
+      // FALLBACK: If profile is missing (e.g. unconfirmed email or legacy error)
+      // We manually construct a user from the Auth metadata so the app doesn't break
+      console.warn('Profile missing for user, using fallback');
+      setUser({
+        id: userId,
+        name: authUser.user_metadata?.name || 'Member',
+        email: authUser.email || '',
+        state: 'NSW',
+        suburb: '',
+        points: 0,
+        booksRead: 0,
+        exchangesCompleted: 0,
+        rating: 5.0,
+        joinDate: new Date().toISOString(),
+        avatarUrl: authUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${authUser.user_metadata?.name || 'User'}`,
+        favoriteQuote: ''
       });
       setIsLoggedIn(true);
     }
