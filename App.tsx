@@ -32,6 +32,40 @@ const App: React.FC = () => {
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [exchangeHistory, setExchangeHistory] = useState<ExchangeTransaction[]>([]);
+  const [lastActivity, setLastActivity] = useState<number>(Date.now());
+
+  // --- AUTO LOGOUT (30 minutes inactivity) ---
+  const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in ms
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const checkInactivity = () => {
+      if (Date.now() - lastActivity > INACTIVITY_TIMEOUT) {
+        console.log('Auto logout due to inactivity');
+        handleLogout();
+      }
+    };
+
+    const interval = setInterval(checkInactivity, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [isLoggedIn, lastActivity]);
+
+  useEffect(() => {
+    const updateActivity = () => setLastActivity(Date.now());
+
+    window.addEventListener('mousemove', updateActivity);
+    window.addEventListener('keydown', updateActivity);
+    window.addEventListener('click', updateActivity);
+    window.addEventListener('touchstart', updateActivity);
+
+    return () => {
+      window.removeEventListener('mousemove', updateActivity);
+      window.removeEventListener('keydown', updateActivity);
+      window.removeEventListener('click', updateActivity);
+      window.removeEventListener('touchstart', updateActivity);
+    };
+  }, []);
 
   // --- INITIAL LOAD & AUTH ---
   // --- INITIAL LOAD & AUTH ---
@@ -370,8 +404,56 @@ const App: React.FC = () => {
       console.error('Error deleting book:', error);
       alert(lang === 'ko' ? '책 삭제에 실패했습니다.' : 'Failed to delete book.');
     } else {
-      // Realtime will auto-update the list
+      // Log the action
+      await supabase.from('activity_logs').insert([{
+        user_id: user.id,
+        user_email: user.email,
+        action_type: 'book_delete',
+        target_type: 'book',
+        target_id: book.id,
+        target_title: book.title,
+        details: { author: book.author }
+      }]);
+
       console.log('Book deleted successfully');
+    }
+  };
+
+  // --- ACCOUNT DELETION ---
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+
+    try {
+      // 1. Delete all user's books
+      await supabase.from('books').delete().eq('owner_id', user.id);
+
+      // 2. Delete all user's messages
+      await supabase.from('messages').delete().eq('sender_id', user.id);
+
+      // 3. Delete all user's chats
+      await supabase.from('chats').delete().or(`partner_a.eq.${user.id},partner_b.eq.${user.id}`);
+
+      // 4. Delete user's profile
+      await supabase.from('profiles').delete().eq('id', user.id);
+
+      // 5. Log the deletion (keep for audit)
+      await supabase.from('activity_logs').insert([{
+        user_id: user.id,
+        user_email: user.email,
+        action_type: 'account_delete',
+        target_type: 'profile',
+        target_id: user.id,
+        details: { name: user.name }
+      }]);
+
+      // 6. Sign out and clear local state
+      handleLogout();
+
+      alert(lang === 'ko' ? '계정이 삭제되었습니다.' : 'Your account has been deleted.');
+
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      alert(lang === 'ko' ? '계정 삭제 중 오류가 발생했습니다.' : 'Error deleting account.');
     }
   };
 
@@ -783,6 +865,7 @@ const App: React.FC = () => {
               onEdit={() => setIsEditingProfile(true)}
               onDeleteBook={handleDeleteBook}
               onViewExchanges={() => setView('my-exchanges')}
+              onDeleteAccount={handleDeleteAccount}
             />
           ) : (
             <div className="max-w-2xl mx-auto px-4 py-20 text-center">

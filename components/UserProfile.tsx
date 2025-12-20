@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { User, Book, ExchangeTransaction } from '../types';
 import { translations, mockDiscussions } from '../data';
 import BookGrid from './BookGrid';
-import { MapPin, Calendar, Star, Edit2, BookOpen, Repeat, Award, ArrowRight, Clock, CheckCircle2, XCircle, Quote, MessageSquare, Users } from 'lucide-react';
+import { MapPin, Calendar, Star, Edit2, BookOpen, Repeat, Award, ArrowRight, Clock, CheckCircle2, XCircle, Quote, MessageSquare, Users, Trash2, AlertTriangle, Settings } from 'lucide-react';
 
 interface UserProfileProps {
    lang: 'en' | 'ko';
@@ -14,11 +14,15 @@ interface UserProfileProps {
    onEdit: () => void;
    onDeleteBook: (book: Book) => void;
    onViewExchanges?: () => void;
+   onDeleteAccount?: () => Promise<void>;
 }
 
-const UserProfile: React.FC<UserProfileProps> = ({ lang, user, myBooks, history, onAddBook, onEdit, onDeleteBook, onViewExchanges }) => {
+const UserProfile: React.FC<UserProfileProps> = ({ lang, user, myBooks, history, onAddBook, onEdit, onDeleteBook, onViewExchanges, onDeleteAccount }) => {
    const t = translations[lang];
-   const [activeTab, setActiveTab] = useState<'library' | 'history' | 'discussions'>('library');
+   const [activeTab, setActiveTab] = useState<'library' | 'history' | 'discussions' | 'settings'>('library');
+   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+   const [deleteInput, setDeleteInput] = useState('');
+   const [isDeleting, setIsDeleting] = useState(false);
 
    return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -150,6 +154,16 @@ const UserProfile: React.FC<UserProfileProps> = ({ lang, user, myBooks, history,
             >
                {t.discussions}
             </button>
+            <button
+               onClick={() => setActiveTab('settings')}
+               className={`pb-4 text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2 ${activeTab === 'settings'
+                  ? 'border-b-2 border-slate-900 text-slate-900'
+                  : 'text-slate-400 hover:text-slate-600'
+                  }`}
+            >
+               <Settings className="w-4 h-4" />
+               {lang === 'ko' ? '설정' : 'Settings'}
+            </button>
          </div>
 
          {/* Tab Content */}
@@ -276,6 +290,98 @@ const UserProfile: React.FC<UserProfileProps> = ({ lang, user, myBooks, history,
                         </div>
                      ))
                   )}
+               </div>
+            )}
+
+            {activeTab === 'settings' && (
+               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl">
+                  <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 mb-6">
+                     <h3 className="font-serif text-xl font-bold text-slate-900 mb-4">
+                        {lang === 'ko' ? '계정 설정' : 'Account Settings'}
+                     </h3>
+                     <p className="text-slate-500 text-sm mb-6">
+                        {lang === 'ko'
+                           ? '계정 정보를 관리하고 개인정보 설정을 변경하세요.'
+                           : 'Manage your account information and privacy settings.'}
+                     </p>
+                     <button
+                        onClick={onEdit}
+                        className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-colors"
+                     >
+                        {t.editProfile}
+                     </button>
+                  </div>
+
+                  {/* Danger Zone */}
+                  <div className="bg-red-50 p-8 rounded-2xl border border-red-200">
+                     <div className="flex items-center gap-3 mb-4">
+                        <AlertTriangle className="w-6 h-6 text-red-600" />
+                        <h3 className="font-serif text-xl font-bold text-red-900">
+                           {lang === 'ko' ? '위험 구역' : 'Danger Zone'}
+                        </h3>
+                     </div>
+
+                     {!showDeleteConfirm ? (
+                        <>
+                           <p className="text-red-700 text-sm mb-6">
+                              {lang === 'ko'
+                                 ? '계정을 삭제하면 모든 데이터(책, 메시지, 프로필)가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.'
+                                 : 'Deleting your account will permanently remove all your data including books, messages, and profile. This action cannot be undone.'}
+                           </p>
+                           <button
+                              onClick={() => setShowDeleteConfirm(true)}
+                              className="px-6 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
+                           >
+                              <Trash2 className="w-4 h-4" />
+                              {lang === 'ko' ? '계정 삭제' : 'Delete Account'}
+                           </button>
+                        </>
+                     ) : (
+                        <div className="space-y-4">
+                           <p className="text-red-700 text-sm font-medium">
+                              {lang === 'ko'
+                                 ? '정말 삭제하시겠습니까? 확인하려면 "DELETE"를 입력하세요:'
+                                 : 'Are you sure? Type "DELETE" to confirm:'}
+                           </p>
+                           <input
+                              type="text"
+                              value={deleteInput}
+                              onChange={(e) => setDeleteInput(e.target.value)}
+                              placeholder="DELETE"
+                              className="w-full px-4 py-3 border-2 border-red-300 rounded-xl focus:border-red-500 focus:outline-none"
+                           />
+                           <div className="flex gap-3">
+                              <button
+                                 onClick={() => {
+                                    setShowDeleteConfirm(false);
+                                    setDeleteInput('');
+                                 }}
+                                 className="px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-300 transition-colors"
+                              >
+                                 {lang === 'ko' ? '취소' : 'Cancel'}
+                              </button>
+                              <button
+                                 onClick={async () => {
+                                    if (deleteInput === 'DELETE' && onDeleteAccount) {
+                                       setIsDeleting(true);
+                                       await onDeleteAccount();
+                                       setIsDeleting(false);
+                                    }
+                                 }}
+                                 disabled={deleteInput !== 'DELETE' || isDeleting}
+                                 className="px-6 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                              >
+                                 {isDeleting ? (
+                                    <span className="animate-spin">⏳</span>
+                                 ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                 )}
+                                 {lang === 'ko' ? '영구 삭제' : 'Permanently Delete'}
+                              </button>
+                           </div>
+                        </div>
+                     )}
+                  </div>
                </div>
             )}
          </div>
