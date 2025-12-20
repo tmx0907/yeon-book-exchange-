@@ -108,7 +108,8 @@ const App: React.FC = () => {
     ]);
 
     // Process profile data
-    if (profileResult.data) {
+    // Note: Supabase .single() returns error (not null data) when row not found
+    if (profileResult.data && !profileResult.error) {
       const data = profileResult.data;
       setUser({
         id: data.id,
@@ -126,12 +127,13 @@ const App: React.FC = () => {
       });
       setIsLoggedIn(true);
     } else {
-      // FALLBACK: If profile is missing (e.g. unconfirmed email or legacy error)
-      // We manually construct a user from the Auth metadata so the app doesn't break
-      console.warn('Profile missing for user, using fallback');
+      // FALLBACK: Profile missing or error fetching
+      // This can happen when: profile row doesn't exist, RLS blocks it, or network error
+      // We create a temporary user from Auth metadata so the app still works
+      console.warn('Profile fetch issue, using fallback. Error:', profileResult.error?.message);
       setUser({
         id: userId,
-        name: authUser.user_metadata?.name || 'Member',
+        name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Member',
         email: authUser.email || '',
         state: 'NSW',
         suburb: '',
@@ -140,7 +142,7 @@ const App: React.FC = () => {
         exchangesCompleted: 0,
         rating: 5.0,
         joinDate: new Date().toISOString(),
-        avatarUrl: authUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${authUser.user_metadata?.name || 'User'}`,
+        avatarUrl: authUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User')}`,
         favoriteQuote: ''
       });
       setIsLoggedIn(true);
