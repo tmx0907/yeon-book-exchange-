@@ -119,10 +119,21 @@ const Auth: React.FC<AuthProps> = ({ lang, onLogin, onForgotPassword }) => {
     try {
       if (isLogin) {
         // --- LOGIN ---
-        const { data, error } = await supabase.auth.signInWithPassword({
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(
+            lang === 'ko'
+              ? '서버 응답 시간이 초과되었습니다. 인터넷 연결을 확인하고 다시 시도해주세요.'
+              : 'Connection timed out. Please check your internet and try again.'
+          )), 15000)
+        );
+
+        const authPromise = supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
+
+        const { data, error } = await Promise.race([authPromise, timeoutPromise]) as any;
 
         if (error) {
           // Track failed login attempts
