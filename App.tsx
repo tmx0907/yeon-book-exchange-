@@ -20,7 +20,7 @@ import MyExchanges from './components/MyExchanges';
 import { Language, Book, Chat, Message, User, ExchangeTransaction, ExchangeProposal } from './types';
 import { translations, mockBooks, mockExchanges } from './data';
 import { ArrowRight } from 'lucide-react';
-import { supabase } from './lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 
 const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('en');
@@ -34,11 +34,26 @@ const App: React.FC = () => {
   const [exchangeHistory, setExchangeHistory] = useState<ExchangeTransaction[]>([]);
 
   // --- INITIAL LOAD & AUTH ---
+  // --- INITIAL LOAD & AUTH ---
   useEffect(() => {
+    // 0. Check Configuration
+    if (!isSupabaseConfigured) {
+      console.error("Supabase not configured: Check Vercel Environment Variables");
+      setIsLoggedIn(false);
+      return;
+    }
+
     // 1. Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) fetchUserProfile(session.user);
-      else loadPublicData(); // Load books even if not logged in
+      // FIX: Ensure session is valid before fetching profile
+      if (session && session.user) {
+        fetchUserProfile(session.user);
+      } else {
+        loadPublicData(); // Load books even if not logged in
+      }
+    }).catch(err => {
+      console.error("Session check failed:", err);
+      loadPublicData();
     });
 
     // 2. Listen for auth changes
@@ -46,6 +61,14 @@ const App: React.FC = () => {
       // Handle password recovery
       if (event === 'PASSWORD_RECOVERY') {
         setView('reset-password');
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setIsLoggedIn(false);
+        setUser(null);
+        setChats([]);
+        setView('home'); // Go to home on logout
+        return;
       }
 
       if (session) {
