@@ -80,57 +80,99 @@ const App: React.FC = () => {
 
   const fetchUserProfile = async (authUser: any) => {
     const userId = authUser.id;
-    // ⚡ PARALLEL EXECUTION: 2-3x faster!
-    const [profileResult, chatsResult, publicDataResult] = await Promise.all([
-      // 1. Fetch user profile
-      supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single(),
 
-      // 2. Fetch user chats (parallel)
-      supabase
-        .from('chats')
-        .select(`
-          id, partner_a, partner_b, last_message, last_message_time,
-          profiles!partner_a(name, avatar_url),
-          profiles!partner_b(name, avatar_url)
-        `)
-        .or(`partner_a.eq.${userId},partner_b.eq.${userId}`)
-        .order('updated_at', { ascending: false }),
+    try {
+      // ⚡ PARALLEL EXECUTION: 2-3x faster!
+      const [profileResult, chatsResult, publicDataResult] = await Promise.all([
+        // 1. Fetch user profile
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single(),
 
-      // 3. Fetch public books (parallel)
-      supabase
-        .from('books')
-        .select('*')
-        .order('created_at', { ascending: false })
-    ]);
+        // 2. Fetch user chats (parallel)
+        supabase
+          .from('chats')
+          .select(`
+            id, partner_a, partner_b, last_message, last_message_time,
+            profiles!partner_a(name, avatar_url),
+            profiles!partner_b(name, avatar_url)
+          `)
+          .or(`partner_a.eq.${userId},partner_b.eq.${userId}`)
+          .order('updated_at', { ascending: false }),
 
-    // Process profile data
-    // Note: Supabase .single() returns error (not null data) when row not found
-    if (profileResult.data && !profileResult.error) {
-      const data = profileResult.data;
-      setUser({
-        id: data.id,
-        name: data.name || 'User',
-        email: data.email,
-        state: data.state || 'NSW',
-        suburb: data.suburb || '',
-        points: data.points,
-        booksRead: 0,
-        exchangesCompleted: 0,
-        rating: 4.8,
-        joinDate: data.join_date || 'Recently',
-        avatarUrl: data.avatar_url,
-        favoriteQuote: data.favorite_quote
-      });
-      setIsLoggedIn(true);
-    } else {
-      // FALLBACK: Profile missing or error fetching
-      // This can happen when: profile row doesn't exist, RLS blocks it, or network error
-      // We create a temporary user from Auth metadata so the app still works
-      console.warn('Profile fetch issue, using fallback. Error:', profileResult.error?.message);
+        // 3. Fetch public books (parallel)
+        supabase
+          .from('books')
+          .select('*')
+          .order('created_at', { ascending: false })
+      ]);
+
+      // Process profile data
+      // Note: Supabase .single() returns error (not null data) when row not found
+      if (profileResult.data && !profileResult.error) {
+        const data = profileResult.data;
+        setUser({
+          id: data.id,
+          name: data.name || 'User',
+          email: data.email,
+          state: data.state || 'NSW',
+          suburb: data.suburb || '',
+          points: data.points,
+          booksRead: 0,
+          exchangesCompleted: 0,
+          rating: 4.8,
+          joinDate: data.join_date || 'Recently',
+          avatarUrl: data.avatar_url,
+          favoriteQuote: data.favorite_quote
+        });
+      } else {
+        // FALLBACK: Profile missing or error fetching
+        console.warn('Profile fetch issue, using fallback. Error:', profileResult.error?.message);
+        setUser({
+          id: userId,
+          name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Member',
+          email: authUser.email || '',
+          state: 'NSW',
+          suburb: '',
+          points: 0,
+          booksRead: 0,
+          exchangesCompleted: 0,
+          rating: 5.0,
+          joinDate: new Date().toISOString(),
+          avatarUrl: authUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User')}`,
+          favoriteQuote: ''
+        });
+      }
+
+      // Process chats data
+      if (chatsResult.data) {
+        processChatsData(chatsResult.data, userId);
+      }
+
+      // Process books data
+      if (publicDataResult.data) {
+        const mappedBooks: Book[] = publicDataResult.data.map((b: any) => ({
+          id: b.id,
+          title: b.title,
+          author: b.author,
+          isbn: b.isbn || '0000',
+          condition: b.condition,
+          ownerId: b.owner_id,
+          ownerName: b.owner_name,
+          location: { suburb: b.location_suburb, state: b.location_state },
+          points: b.points,
+          imageUrl: b.image_url,
+          category: b.category,
+          status: b.status
+        }));
+        setAllBooks(mappedBooks);
+      }
+    } catch (error) {
+      // CRITICAL: Even if all fetches fail, we must set user state from auth metadata
+      // Otherwise the user will appear logged out despite having a valid session
+      console.error('fetchUserProfile failed:', error);
       setUser({
         id: userId,
         name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Member',
@@ -142,34 +184,11 @@ const App: React.FC = () => {
         exchangesCompleted: 0,
         rating: 5.0,
         joinDate: new Date().toISOString(),
-        avatarUrl: authUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User')}`,
+        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User')}`,
         favoriteQuote: ''
       });
-      setIsLoggedIn(true);
-    }
-
-    // Process chats data
-    if (chatsResult.data) {
-      processChatsData(chatsResult.data, userId);
-    }
-
-    // Process books data
-    if (publicDataResult.data) {
-      const mappedBooks: Book[] = publicDataResult.data.map((b: any) => ({
-        id: b.id,
-        title: b.title,
-        author: b.author,
-        isbn: b.isbn || '0000',
-        condition: b.condition,
-        ownerId: b.owner_id,
-        ownerName: b.owner_name,
-        location: { suburb: b.location_suburb, state: b.location_state },
-        points: b.points,
-        imageUrl: b.image_url,
-        category: b.category,
-        status: b.status
-      }));
-      setAllBooks(mappedBooks);
+      // Still load public data for books display
+      loadPublicData();
     }
   };
 
