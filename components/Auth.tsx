@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Mail, Lock, User, Loader2, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { translations } from '../data';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 interface AuthProps {
   lang: 'en' | 'ko';
@@ -115,25 +115,23 @@ const Auth: React.FC<AuthProps> = ({ lang, onLogin, onForgotPassword }) => {
       setIsLoading(false);
       return;
     }
+    if (!isSupabaseConfigured) {
+      setError(
+        lang === 'ko'
+          ? '서버 설정 오류: 환경 변수가 누락되었습니다. 관리자에게 문의하세요.'
+          : 'Server Configuration Error: Missing environment variables. Please check Vercel settings.'
+      );
+      setIsLoading(false);
+      return;
+    }
 
     try {
       if (isLogin) {
         // --- LOGIN ---
-        // Add timeout to prevent infinite loading
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(
-            lang === 'ko'
-              ? '서버 응답 시간이 초과되었습니다. 인터넷 연결을 확인하고 다시 시도해주세요.'
-              : 'Connection timed out. Please check your internet and try again.'
-          )), 15000)
-        );
-
-        const authPromise = supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
-
-        const { data, error } = await Promise.race([authPromise, timeoutPromise]) as any;
 
         if (error) {
           // Track failed login attempts

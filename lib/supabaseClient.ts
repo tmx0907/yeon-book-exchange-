@@ -37,8 +37,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Fallback to placeholder values to prevent "supabaseUrl is required" error.
-// The app will load, but network requests will fail until real keys are provided in .env
 const url = supabaseUrl || 'https://placeholder.supabase.co';
 const key = supabaseAnonKey || 'placeholder-key';
 
+export const isSupabaseConfigured = !!supabaseUrl && !!supabaseAnonKey;
 export const supabase = createClient(url, key);
