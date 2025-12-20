@@ -565,7 +565,25 @@ const App: React.FC = () => {
   const marketBooks = allBooks;
 
   const handleLogin = () => { /* Handled in Auth Component */ };
-  const handleLogout = async () => { await supabase.auth.signOut(); };
+
+  const handleLogout = async () => {
+    // FORCE LOGOUT: Clear UI immediately without waiting for server
+    setIsLoggedIn(false);
+    setUser(null);
+    setChats([]);
+    setView('home');
+
+    // Clear Supabase session from local storage manually
+    const key = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+    if (key) localStorage.removeItem(key);
+
+    // Attempt server sign out (fire and forget)
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("Sign out error:", e);
+    }
+  };
 
   // Helper for Profile Edit
   const handleUpdateProfile = async (updatedUser: User) => {
