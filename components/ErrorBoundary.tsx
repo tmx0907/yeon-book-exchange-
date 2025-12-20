@@ -1,71 +1,53 @@
 /**
  * Error Boundary Component
  * 
- * React 에러 경계 - 자식 컴포넌트의 JavaScript 에러를 잡아서
+ * React 에러 경계 - JavaScript 에러를 잡아서
  * 앱 전체가 크래시되는 것을 방지합니다.
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
 interface Props {
-    children: ReactNode;
-    fallback?: ReactNode;
+    children: React.ReactNode;
+    fallback?: React.ReactNode;
 }
 
 interface State {
     hasError: boolean;
     error: Error | null;
-    errorInfo: ErrorInfo | null;
 }
 
-class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundary extends React.Component<Props, State> {
     constructor(props: Props) {
         super(props);
-        this.state = {
-            hasError: false,
-            error: null,
-            errorInfo: null
-        };
+        this.state = { hasError: false, error: null };
     }
 
-    static getDerivedStateFromError(error: Error): Partial<State> {
+    static getDerivedStateFromError(error: Error): State {
         return { hasError: true, error };
     }
 
-    componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
         console.error('ErrorBoundary caught an error:', error, errorInfo);
-        this.setState({ errorInfo });
-
-        // TODO: Send error to logging service (e.g., Sentry)
-        // logErrorToService(error, errorInfo);
     }
 
-    handleReload = (): void => {
-        window.location.reload();
-    };
+    handleReload = () => window.location.reload();
+    handleGoHome = () => { window.location.href = '/'; };
 
-    handleGoHome = (): void => {
-        window.location.href = '/';
-    };
-
-    render(): ReactNode {
+    render() {
         if (this.state.hasError) {
-            // Custom fallback UI
             if (this.props.fallback) {
                 return this.props.fallback;
             }
 
-            // Default error UI
             return (
                 <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex items-center justify-center p-4">
                     <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-                        {/* Icon */}
                         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
                             <AlertTriangle className="w-8 h-8 text-red-600" />
                         </div>
 
-                        {/* Title */}
                         <h1 className="text-2xl font-bold text-slate-900 mb-2">
                             문제가 발생했습니다
                         </h1>
@@ -73,21 +55,14 @@ class ErrorBoundary extends Component<Props, State> {
                             예기치 않은 오류가 발생했습니다. 다시 시도해주세요.
                         </p>
 
-                        {/* Error details (development only) */}
-                        {process.env.NODE_ENV === 'development' && this.state.error && (
+                        {this.state.error && (
                             <div className="bg-slate-100 rounded-lg p-4 mb-6 text-left">
                                 <p className="text-sm font-mono text-red-600 break-all">
-                                    {this.state.error.toString()}
+                                    {this.state.error.message}
                                 </p>
-                                {this.state.errorInfo && (
-                                    <pre className="text-xs text-slate-500 mt-2 overflow-auto max-h-32">
-                                        {this.state.errorInfo.componentStack}
-                                    </pre>
-                                )}
                             </div>
                         )}
 
-                        {/* Action buttons */}
                         <div className="flex gap-3">
                             <button
                                 onClick={this.handleGoHome}
