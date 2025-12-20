@@ -121,15 +121,17 @@ export function useBooks(user: User | null, lang: Language): UseBooksReturn {
             }
 
             // Log the action (optional - may fail if table doesn't exist)
-            await supabase.from('activity_logs').insert([{
-                user_id: user.id,
-                user_email: user.email,
-                action_type: 'book_delete',
-                target_type: 'book',
-                target_id: book.id,
-                target_title: book.title,
-                details: { author: book.author }
-            }]).catch(() => { }); // Silent fail
+            try {
+                await supabase.from('activity_logs').insert([{
+                    user_id: user.id,
+                    user_email: user.email,
+                    action_type: 'book_delete',
+                    target_type: 'book',
+                    target_id: book.id,
+                    target_title: book.title,
+                    details: { author: book.author }
+                }]);
+            } catch { /* Silent fail for logging */ }
 
             return true;
         } catch (error) {

@@ -11,7 +11,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-import type { User, Language } from '../types';
+import type { User, Language, State } from '../types';
 
 // --- HELPER: Create User object from Supabase Auth User ---
 const createUserFromAuth = (authUser: SupabaseUser): User => ({
@@ -31,11 +31,11 @@ const createUserFromAuth = (authUser: SupabaseUser): User => ({
 
 interface UseAuthReturn {
     user: User | null;
-    setUser: React.Dispatch<React.SetStateAction<User | null>>;
+    setUser: (user: User | null) => void;
     isLoggedIn: boolean;
     isConfigured: boolean;
     networkError: string | null;
-    setNetworkError: React.Dispatch<React.SetStateAction<string | null>>;
+    setNetworkError: (error: string | null) => void;
     handleLogout: () => Promise<void>;
     fetchUserProfile: (authUser: SupabaseUser) => Promise<void>;
 }

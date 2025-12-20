@@ -269,8 +269,8 @@ const MyExchanges: React.FC<MyExchangesProps> = ({
                 <button
                     onClick={() => setActiveTab('received')}
                     className={`px-6 py-3 font-medium transition-colors border-b-2 ${activeTab === 'received'
-                            ? 'border-purple-600 text-purple-600'
-                            : 'border-transparent text-slate-600 hover:text-slate-900'
+                        ? 'border-purple-600 text-purple-600'
+                        : 'border-transparent text-slate-600 hover:text-slate-900'
                         }`}
                 >
                     {translations.received}
@@ -283,8 +283,8 @@ const MyExchanges: React.FC<MyExchangesProps> = ({
                 <button
                     onClick={() => setActiveTab('sent')}
                     className={`px-6 py-3 font-medium transition-colors border-b-2 ${activeTab === 'sent'
-                            ? 'border-blue-600 text-blue-600'
-                            : 'border-transparent text-slate-600 hover:text-slate-900'
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-slate-600 hover:text-slate-900'
                         }`}
                 >
                     {translations.sent}
@@ -312,7 +312,9 @@ const MyExchanges: React.FC<MyExchangesProps> = ({
             ) : (
                 <div className="grid gap-4">
                     {currentProposals.map(proposal => (
-                        <ProposalCard key={proposal.id} proposal={proposal} isSent={activeTab === 'sent'} />
+                        <React.Fragment key={proposal.id}>
+                            <ProposalCard proposal={proposal} isSent={activeTab === 'sent'} />
+                        </React.Fragment>
                     ))}
                 </div>
             )}

@@ -21,243 +21,79 @@ import { Language, Book, Chat, Message, User, ExchangeTransaction, ExchangePropo
 import { translations, mockBooks, mockExchanges } from './data';
 import { ArrowRight, AlertCircle, X } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
-
-// --- HELPER: Create User object from Supabase Auth User ---
-const createUserFromAuth = (authUser: SupabaseUser): User => ({
-  id: authUser.id,
-  name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Member',
-  email: authUser.email || '',
-  state: 'NSW',
-  suburb: '',
-  points: 0,
-  booksRead: 0,
-  exchangesCompleted: 0,
-  rating: 5.0,
-  joinDate: new Date().toISOString(),
-  avatarUrl: authUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User')}`,
-  favoriteQuote: ''
-});
+import { useAuth, useBooks } from './hooks';
 
 const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('en');
   const [view, setView] = useState('home');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [networkError, setNetworkError] = useState<string | null>(null);
 
-  // --- REAL SUPABASE STATE ---
-  const [user, setUser] = useState<User | null>(null);
-  const [allBooks, setAllBooks] = useState<Book[]>([]);
+  // ========================================
+  // 🔐 AUTH HOOK - Handles all authentication
+  // ========================================
+  const {
+    user,
+    setUser,
+    isLoggedIn,
+    networkError,
+    setNetworkError,
+    handleLogout: authLogout
+  } = useAuth(lang);
+
+  // ========================================
+  // 📚 BOOKS HOOK - Handles all book operations
+  // ========================================
+  const {
+    allBooks,
+    myBooks,
+    marketBooks,
+    loadBooks,
+    uploadBook,
+    deleteBook
+  } = useBooks(user, lang);
+
+  // --- REMAINING STATE (Chat & Exchanges - to be refactored later) ---
   const [chats, setChats] = useState<Chat[]>([]);
   const [exchangeHistory, setExchangeHistory] = useState<ExchangeTransaction[]>([]);
-  const [lastActivity, setLastActivity] = useState<number>(Date.now());
 
-  // --- AUTO LOGOUT (30 minutes inactivity) ---
-  const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in ms
-
+  // Redirect on auth state changes
   useEffect(() => {
-    if (!isLoggedIn) return;
-
-    const checkInactivity = () => {
-      if (Date.now() - lastActivity > INACTIVITY_TIMEOUT) {
-        console.log('Auto logout due to inactivity');
-        handleLogout();
-      }
-    };
-
-    const interval = setInterval(checkInactivity, 60000); // Check every minute
-    return () => clearInterval(interval);
-  }, [isLoggedIn, lastActivity]);
-
-  useEffect(() => {
-    const updateActivity = () => setLastActivity(Date.now());
-
-    window.addEventListener('mousemove', updateActivity);
-    window.addEventListener('keydown', updateActivity);
-    window.addEventListener('click', updateActivity);
-    window.addEventListener('touchstart', updateActivity);
-
-    return () => {
-      window.removeEventListener('mousemove', updateActivity);
-      window.removeEventListener('keydown', updateActivity);
-      window.removeEventListener('click', updateActivity);
-      window.removeEventListener('touchstart', updateActivity);
-    };
-  }, []);
-
-  // --- INITIAL LOAD & AUTH ---
-  // --- INITIAL LOAD & AUTH ---
-  useEffect(() => {
-    // 0. Check Configuration
-    if (!isSupabaseConfigured) {
-      console.error("Supabase not configured: Check Vercel Environment Variables");
-      setIsLoggedIn(false);
-      return;
+    if (isLoggedIn && ['login', 'forgot-password', 'reset-password'].includes(view)) {
+      setView('home');
     }
+  }, [isLoggedIn, view]);
 
-    // 1. Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && session.user) {
-        // Use helper to create user from auth data
-        setUser(createUserFromAuth(session.user));
-        setIsLoggedIn(true);
-        loadPublicData();
-        fetchUserProfile(session.user);
-      } else {
-        loadPublicData();
-      }
-    }).catch(err => {
-      console.error("Session check failed:", err);
-      setNetworkError(lang === 'ko' ? '네트워크 연결 오류. 인터넷 연결을 확인해주세요.' : 'Network error. Please check your connection.');
-      loadPublicData();
-    });
+  // Handle logout with view redirect
+  const handleLogout = async () => {
+    await authLogout();
+    setChats([]);
+    setView('home');
+  };
 
-    // 2. Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Handle password recovery
-      if (event === 'PASSWORD_RECOVERY') {
-        setView('reset-password');
-      }
+  // --- CHAT LOADING (Chats not yet in hooks) ---
 
-      if (event === 'SIGNED_OUT') {
-        setIsLoggedIn(false);
-        setUser(null);
-        setChats([]);
-        setView('home'); // Go to home on logout
-        return;
-      }
+  // Load chats when user is available
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured) return;
+    loadUserChats(user.id);
+  }, [user]);
 
-      if (session && session.user) {
-        // Use helper to create user from auth data
-        setUser(createUserFromAuth(session.user));
-        setIsLoggedIn(true);
-        loadPublicData();
-        fetchUserProfile(session.user);
-
-        // Redirect to home if user was on login/reset pages
-        setView(prevView => ['login', 'forgot-password', 'reset-password'].includes(prevView) ? 'home' : prevView);
-      } else {
-        setIsLoggedIn(false);
-        setUser(null);
-        setChats([]);
-        loadPublicData();
-      }
-    });
-
-    // 3. Realtime Subscription for Books (Global)
-    const bookChannel = supabase
-      .channel('public:books')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'books' }, (payload) => {
-        // Refresh books when change happens
-        loadPublicData();
-      })
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-      supabase.removeChannel(bookChannel);
-    };
-  }, []);
-
-  // --- FETCHING FUNCTIONS (OPTIMIZED FOR SPEED) ---
-
-  const fetchUserProfile = async (authUser: any) => {
-    const userId = authUser.id;
-
+  const loadUserChats = async (userId: string) => {
     try {
-      // ⚡ PARALLEL EXECUTION: 2-3x faster!
-      const [profileResult, chatsResult, publicDataResult] = await Promise.all([
-        // 1. Fetch user profile
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single(),
+      const { data: chatsData } = await supabase
+        .from('chats')
+        .select(`
+          id, partner_a, partner_b, last_message, last_message_time,
+          profiles!partner_a(name, avatar_url),
+          profiles!partner_b(name, avatar_url)
+        `)
+        .or(`partner_a.eq.${userId},partner_b.eq.${userId}`)
+        .order('updated_at', { ascending: false });
 
-        // 2. Fetch user chats (parallel)
-        supabase
-          .from('chats')
-          .select(`
-            id, partner_a, partner_b, last_message, last_message_time,
-            profiles!partner_a(name, avatar_url),
-            profiles!partner_b(name, avatar_url)
-          `)
-          .or(`partner_a.eq.${userId},partner_b.eq.${userId}`)
-          .order('updated_at', { ascending: false }),
-
-        // 3. Fetch public books (parallel)
-        supabase
-          .from('books')
-          .select('*')
-          .order('created_at', { ascending: false })
-      ]);
-
-      // Process profile data
-      // Note: Supabase .single() returns error (not null data) when row not found
-      if (profileResult.data && !profileResult.error) {
-        const data = profileResult.data;
-        setUser({
-          id: data.id,
-          name: data.name || 'User',
-          email: data.email,
-          state: data.state || 'NSW',
-          suburb: data.suburb || '',
-          points: data.points,
-          booksRead: 0,
-          exchangesCompleted: 0,
-          rating: 4.8,
-          joinDate: data.join_date || 'Recently',
-          avatarUrl: data.avatar_url,
-          favoriteQuote: data.favorite_quote
-        });
-      } else {
-        // FALLBACK: Profile missing or error fetching
-        console.warn('Profile fetch issue, using fallback. Error:', profileResult.error?.message);
-        setUser({
-          id: userId,
-          name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Member',
-          email: authUser.email || '',
-          state: 'NSW',
-          suburb: '',
-          points: 0,
-          booksRead: 0,
-          exchangesCompleted: 0,
-          rating: 5.0,
-          joinDate: new Date().toISOString(),
-          avatarUrl: authUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User')}`,
-          favoriteQuote: ''
-        });
-      }
-
-      // Process chats data
-      if (chatsResult.data) {
-        processChatsData(chatsResult.data, userId);
-      }
-
-      // Process books data
-      if (publicDataResult.data) {
-        const mappedBooks: Book[] = publicDataResult.data.map((b: any) => ({
-          id: b.id,
-          title: b.title,
-          author: b.author,
-          isbn: b.isbn || '0000',
-          condition: b.condition,
-          ownerId: b.owner_id,
-          ownerName: b.owner_name,
-          location: { suburb: b.location_suburb, state: b.location_state },
-          points: b.points,
-          imageUrl: b.image_url,
-          category: b.category,
-          status: b.status
-        }));
-        setAllBooks(mappedBooks);
+      if (chatsData) {
+        await processChatsData(chatsData, userId);
       }
     } catch (error) {
-      // CRITICAL: Even if all fetches fail, we must set user state from auth metadata
-      console.error('fetchUserProfile failed:', error);
-      setNetworkError(lang === 'ko' ? '프로필 정보를 불러오는데 실패했습니다.' : 'Failed to load profile data.');
-      setUser(createUserFromAuth(authUser));
-      loadPublicData();
+      console.error('Failed to load chats:', error);
     }
   };
 
@@ -299,31 +135,6 @@ const App: React.FC = () => {
     setChats(loadedChats);
   };
 
-  const loadPublicData = async () => {
-    // Fetch all available books
-    const { data: booksData } = await supabase
-      .from('books')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (booksData) {
-      const mappedBooks: Book[] = booksData.map((b: any) => ({
-        id: b.id,
-        title: b.title,
-        author: b.author,
-        isbn: b.isbn || '0000',
-        condition: b.condition,
-        ownerId: b.owner_id,
-        ownerName: b.owner_name,
-        location: { suburb: b.location_suburb, state: b.location_state },
-        points: b.points,
-        imageUrl: b.image_url,
-        category: b.category,
-        status: b.status
-      }));
-      setAllBooks(mappedBooks);
-    }
-  };
 
   // Removed duplicate fetchUserChats - now integrated into fetchUserProfile for parallel execution
 
@@ -342,55 +153,19 @@ const App: React.FC = () => {
     return () => { supabase.removeChannel(chatChannel); };
   }, [user]);
 
-  // --- ACTIONS ---
+  // --- ACTIONS (using hooks) ---
 
   const handleUploadBook = async (bookData: Partial<Book>) => {
-    if (!user) return;
-
-    const newBook = {
-      title: bookData.title,
-      author: bookData.author,
-      condition: bookData.condition,
-      category: bookData.category,
-      image_url: bookData.imageUrl,
-      owner_id: user.id,
-      owner_name: user.name,
-      location_state: user.state,
-      location_suburb: user.suburb,
-      status: 'Available'
-    };
-
-    await supabase.from('books').insert([newBook]);
-    // Realtime will auto-update the list
-    setView('profile');
+    const success = await uploadBook(bookData);
+    if (success) {
+      setView('profile');
+    }
   };
 
   const handleDeleteBook = async (book: Book) => {
-    if (!user) return;
-
-    // Delete the book from Supabase
-    const { error } = await supabase
-      .from('books')
-      .delete()
-      .eq('id', book.id)
-      .eq('owner_id', user.id); // Ensure only owner can delete
-
-    if (error) {
-      console.error('Error deleting book:', error);
+    const success = await deleteBook(book);
+    if (!success) {
       alert(lang === 'ko' ? '책 삭제에 실패했습니다.' : 'Failed to delete book.');
-    } else {
-      // Log the action
-      await supabase.from('activity_logs').insert([{
-        user_id: user.id,
-        user_email: user.email,
-        action_type: 'book_delete',
-        target_type: 'book',
-        target_id: book.id,
-        target_title: book.title,
-        details: { author: book.author }
-      }]);
-
-      console.log('Book deleted successfully');
     }
   };
 
@@ -649,35 +424,13 @@ const App: React.FC = () => {
   const [exchangeTarget, setExchangeTarget] = useState<Book | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
+
   const t = translations[lang];
 
-  // Derived state for My Books
-  const myBooks = allBooks.filter(b => user && b.ownerId === user.id);
-
-  // FIX: Allow user to see their own books in the market view (no filtering by ID)
-  // This ensures newly uploaded books appear on Home/Search immediately.
-  const marketBooks = allBooks;
+  // myBooks and marketBooks are now provided by useBooks hook
+  // handleLogout is now defined above using authLogout from useAuth hook
 
   const handleLogin = () => { /* Handled in Auth Component */ };
-
-  const handleLogout = async () => {
-    // FORCE LOGOUT: Clear UI immediately without waiting for server
-    setIsLoggedIn(false);
-    setUser(null);
-    setChats([]);
-    setView('home');
-
-    // Clear Supabase session from local storage manually
-    const key = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
-    if (key) localStorage.removeItem(key);
-
-    // Attempt server sign out (fire and forget)
-    try {
-      await supabase.auth.signOut();
-    } catch (e) {
-      console.error("Sign out error:", e);
-    }
-  };
 
   // Helper for Profile Edit
   const handleUpdateProfile = async (updatedUser: User) => {
