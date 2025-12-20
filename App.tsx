@@ -19,13 +19,31 @@ import CommunityMain from './components/Community/CommunityMain';
 import MyExchanges from './components/MyExchanges';
 import { Language, Book, Chat, Message, User, ExchangeTransaction, ExchangeProposal } from './types';
 import { translations, mockBooks, mockExchanges } from './data';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, AlertCircle, X } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+
+// --- HELPER: Create User object from Supabase Auth User ---
+const createUserFromAuth = (authUser: SupabaseUser): User => ({
+  id: authUser.id,
+  name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Member',
+  email: authUser.email || '',
+  state: 'NSW',
+  suburb: '',
+  points: 0,
+  booksRead: 0,
+  exchangesCompleted: 0,
+  rating: 5.0,
+  joinDate: new Date().toISOString(),
+  avatarUrl: authUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User')}`,
+  favoriteQuote: ''
+});
 
 const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('en');
   const [view, setView] = useState('home');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [networkError, setNetworkError] = useState<string | null>(null);
 
   // --- REAL SUPABASE STATE ---
   const [user, setUser] = useState<User | null>(null);
@@ -80,32 +98,17 @@ const App: React.FC = () => {
     // 1. Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session && session.user) {
-        // CRITICAL: Set user IMMEDIATELY from session data
-        const authUser = session.user;
-        setUser({
-          id: authUser.id,
-          name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Member',
-          email: authUser.email || '',
-          state: 'NSW',
-          suburb: '',
-          points: 0,
-          booksRead: 0,
-          exchangesCompleted: 0,
-          rating: 5.0,
-          joinDate: new Date().toISOString(),
-          avatarUrl: authUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User')}`,
-          favoriteQuote: ''
-        });
+        // Use helper to create user from auth data
+        setUser(createUserFromAuth(session.user));
         setIsLoggedIn(true);
-        // Load books immediately (parallel with profile)
         loadPublicData();
-        // Then enhance with full profile (async)
-        fetchUserProfile(authUser);
+        fetchUserProfile(session.user);
       } else {
         loadPublicData();
       }
     }).catch(err => {
       console.error("Session check failed:", err);
+      setNetworkError(lang === 'ko' ? '네트워크 연결 오류. 인터넷 연결을 확인해주세요.' : 'Network error. Please check your connection.');
       loadPublicData();
     });
 
@@ -125,29 +128,11 @@ const App: React.FC = () => {
       }
 
       if (session && session.user) {
-        // CRITICAL: Set user IMMEDIATELY from session data
-        // This ensures user is NEVER null when isLoggedIn is true
-        const authUser = session.user;
-        setUser({
-          id: authUser.id,
-          name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Member',
-          email: authUser.email || '',
-          state: 'NSW',
-          suburb: '',
-          points: 0,
-          booksRead: 0,
-          exchangesCompleted: 0,
-          rating: 5.0,
-          joinDate: new Date().toISOString(),
-          avatarUrl: authUser.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User')}`,
-          favoriteQuote: ''
-        });
+        // Use helper to create user from auth data
+        setUser(createUserFromAuth(session.user));
         setIsLoggedIn(true);
-
-        // Load books immediately (parallel with profile)
         loadPublicData();
-        // Then try to enhance with full profile data (async, non-blocking)
-        fetchUserProfile(authUser);
+        fetchUserProfile(session.user);
 
         // Redirect to home if user was on login/reset pages
         setView(prevView => ['login', 'forgot-password', 'reset-password'].includes(prevView) ? 'home' : prevView);
@@ -269,23 +254,9 @@ const App: React.FC = () => {
       }
     } catch (error) {
       // CRITICAL: Even if all fetches fail, we must set user state from auth metadata
-      // Otherwise the user will appear logged out despite having a valid session
       console.error('fetchUserProfile failed:', error);
-      setUser({
-        id: userId,
-        name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Member',
-        email: authUser.email || '',
-        state: 'NSW',
-        suburb: '',
-        points: 0,
-        booksRead: 0,
-        exchangesCompleted: 0,
-        rating: 5.0,
-        joinDate: new Date().toISOString(),
-        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User')}`,
-        favoriteQuote: ''
-      });
-      // Still load public data for books display
+      setNetworkError(lang === 'ko' ? '프로필 정보를 불러오는데 실패했습니다.' : 'Failed to load profile data.');
+      setUser(createUserFromAuth(authUser));
       loadPublicData();
     }
   };
@@ -753,6 +724,24 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans">
+      {/* Network Error Banner */}
+      {networkError && (
+        <div className="bg-red-50 border-b border-red-200 px-4 py-3">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <p className="text-red-800 text-sm font-medium">{networkError}</p>
+            </div>
+            <button
+              onClick={() => setNetworkError(null)}
+              className="text-red-600 hover:text-red-800"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <Navbar
         lang={lang}
         setLang={setLang}
