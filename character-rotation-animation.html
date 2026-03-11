@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Rotation Animation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f5f5f5;
+        }
+
+        /* Main container */
+        .animation-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+        }
+
+        /* Static emblem base - NEVER MOVES */
+        .emblem-base {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .emblem-base img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Character layer that rotates */
+        .character-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            display: flex;
+        }
+
+        /* Each character half */
+        .character-half {
+            width: 50%;
+            height: 100%;
+            position: relative;
+            perspective: 1200px;
+            overflow: hidden;
+        }
+
+        /* Rotating character card */
+        .rotating-character {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-style: preserve-3d;
+            backface-visibility: hidden;
+        }
+
+        .rotating-character img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Left character - rotates from right edge */
+        .left .rotating-character {
+            transform-origin: right center;
+        }
+
+        /* Right character - rotates from left edge */
+        .right .rotating-character {
+            transform-origin: left center;
+        }
+
+        /* Continuous rotation animation with easing */
+        @keyframes rotate360 {
+            0% {
+                transform: rotateY(0deg);
+            }
+
+            100% {
+                transform: rotateY(360deg);
+            }
+        }
+
+        /* Apply animation to left character */
+        .left .rotating-character {
+            animation: rotate360 2s ease-in-out infinite;
+            animation-delay: 0s;
+        }
+
+        /* Apply animation to right character with delay */
+        .right .rotating-character {
+            animation: rotate360 2s ease-in-out infinite;
+            animation-delay: 1s;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="animation-container">
+        <!-- Static emblem base with border - NEVER MOVES -->
+        <div class="emblem-base">
+            <img src="/Users/jungeunkim/.gemini/antigravity/brain/1bd980ba-0c26-4c1e-85f5-2acc56cef5ed/uploaded_image_0_1768566318258.png"
+                alt="Emblem Base">
+        </div>
+
+        <!-- Character layer that rotates -->
+        <div class="character-layer">
+            <!-- Left character -->
+            <div class="character-half left">
+                <div class="rotating-character">
+                    <img src="/Users/jungeunkim/.gemini/antigravity/brain/1bd980ba-0c26-4c1e-85f5-2acc56cef5ed/uploaded_image_0_1768566318258.png"
+                        alt="Left Character">
+                </div>
+            </div>
+
+            <!-- Right character -->
+            <div class="character-half right">
+                <div class="rotating-character">
+                    <img src="/Users/jungeunkim/.gemini/antigravity/brain/1bd980ba-0c26-4c1e-85f5-2acc56cef5ed/uploaded_image_1_1768566318258.png"
+                        alt="Right Character">
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
